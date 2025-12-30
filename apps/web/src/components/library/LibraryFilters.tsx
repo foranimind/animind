@@ -1,17 +1,14 @@
-type FilterOption = {
-  value: string;
-  label: string;
-};
+import { SelectMenu, type SelectOption } from "../ui/SelectMenu";
+
+export type FilterOption = SelectOption;
 
 type LibraryFiltersProps = {
-  query: string;
   style: string;
   duration: string;
   date: string;
   styleOptions: FilterOption[];
   durationOptions: FilterOption[];
   dateOptions: FilterOption[];
-  onQueryChange: (value: string) => void;
   onStyleChange: (value: string) => void;
   onDurationChange: (value: string) => void;
   onDateChange: (value: string) => void;
@@ -19,62 +16,48 @@ type LibraryFiltersProps = {
 };
 
 export const LibraryFilters = ({
-  query,
   style,
   duration,
   date,
   styleOptions,
   durationOptions,
   dateOptions,
-  onQueryChange,
   onStyleChange,
   onDurationChange,
   onDateChange,
   onClear,
 }: LibraryFiltersProps) => (
-  <div className="library-filters">
-    <label className="library-search">
-      <span>Search</span>
-      <input
-        type="search"
-        placeholder="Search by title or prompt"
-        value={query}
-        onChange={(event) => onQueryChange(event.target.value)}
+  <div className="library-filter-panel">
+    <label className="library-filter-field">
+      <span>风格</span>
+      <SelectMenu
+        value={style}
+        options={styleOptions}
+        ariaLabel="风格"
+        onChange={onStyleChange}
       />
     </label>
-    <div className="library-filter-group">
-      <label>
-        <span>Style</span>
-        <select value={style} onChange={(event) => onStyleChange(event.target.value)}>
-          {styleOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        <span>Duration</span>
-        <select value={duration} onChange={(event) => onDurationChange(event.target.value)}>
-          {durationOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        <span>Date</span>
-        <select value={date} onChange={(event) => onDateChange(event.target.value)}>
-          {dateOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button type="button" className="library-clear" onClick={onClear}>
-        Clear
+    <label className="library-filter-field">
+      <span>时长</span>
+      <SelectMenu
+        value={duration}
+        options={durationOptions}
+        ariaLabel="时长"
+        onChange={onDurationChange}
+      />
+    </label>
+    <label className="library-filter-field">
+      <span>日期</span>
+      <SelectMenu
+        value={date}
+        options={dateOptions}
+        ariaLabel="日期"
+        onChange={onDateChange}
+      />
+    </label>
+    <div className="library-filter-actions">
+      <button type="button" className="library-filter-clear" onClick={onClear}>
+        清空筛选
       </button>
     </div>
   </div>
