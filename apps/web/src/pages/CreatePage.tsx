@@ -3,13 +3,28 @@ import { PreviewPanel } from "../components/preview/PreviewPanel";
 import { SelectMenu, type SelectOption } from "../components/ui/SelectMenu";
 import { useJobRunner } from "../hooks/useJobRunner";
 import { fetchManifest, fetchPreviewConfig, getAssetUrl } from "../lib/api";
+import { createNewSession } from "../lib/sessionActions";
+import {
+  DEFAULT_ACTIVE_TAB,
+  DEFAULT_ADVANCED_SETTINGS,
+  DEFAULT_DURATION,
+  DEFAULT_EXPORT_PRESET,
+  DEFAULT_INSPECTOR_STAGE,
+  EXPORT_PRESETS,
+  INITIAL_MESSAGES,
+  MODEL_OPTIONS,
+  MOOD_OPTIONS,
+  RESOLUTION_PRESETS,
+  STYLE_OPTIONS,
+  createSessionId,
+} from "../lib/sessionDefaults";
 import {
   getActiveSessionId,
   getSessionDetail,
   onSessionsUpdate,
   saveRecentWork,
   saveSessionDetail,
-  setActiveSessionId,
+  touchSession,
   updateSessionIndex,
   type SessionDetail,
   type SessionStatus,
@@ -34,56 +49,10 @@ const INSPECTOR_STAGE_LABELS: Record<InspectorStage, string> = {
   complete: "交付",
 };
 
-const STYLE_OPTIONS = [
-  {
-    id: "cinematic",
-    title: "电影感",
-    description: "高对比光影与大片构图。",
-  },
-  {
-    id: "anime",
-    title: "动漫",
-    description: "线条化渲染与高饱和色彩。",
-  },
-  {
-    id: "low_poly",
-    title: "低多边形",
-    description: "块面几何与简化质感。",
-  },
-  {
-    id: "realistic",
-    title: "写实",
-    description: "真实光照与细节层次。",
-  },
-];
-
-const MOOD_OPTIONS = [
-  { id: "epic", label: "史诗" },
-  { id: "calm", label: "平静" },
-  { id: "horror", label: "恐怖" },
-];
-
-const MODEL_OPTIONS: SelectOption[] = [
-  { value: "atlas_3_preview", label: "Atlas-3 预览" },
-  { value: "atlas_3_pro", label: "Atlas-3 高级" },
-];
-
-const RESOLUTION_PRESETS = [
-  { id: "panorama_2k", label: "全景 2K (2048×1024)", value: [2048, 1024] as [number, number] },
-  { id: "1080p", label: "1080p (1920×1080)", value: [1920, 1080] as [number, number] },
-  { id: "720p", label: "720p (1280×720)", value: [1280, 720] as [number, number] },
-];
-
 const RESOLUTION_SELECT_OPTIONS: SelectOption[] = RESOLUTION_PRESETS.map((preset) => ({
   value: preset.id,
   label: preset.label,
 }));
-
-const EXPORT_PRESETS = [
-  { value: "mp4_720p", label: "720p（1280×720）" },
-  { value: "mp4_1080p", label: "1080p（1920×1080）" },
-  { value: "mp4_4k", label: "4K（3840×2160）" },
-];
 
 const EXPORT_SELECT_OPTIONS: SelectOption[] = EXPORT_PRESETS.map((preset) => ({
   value: preset.value,
@@ -121,16 +90,6 @@ const INSPECTOR_TABS = [
   { id: "export", label: "导出" },
 ] as const;
 
-const DEFAULT_DURATION = 14;
-const DEFAULT_ADVANCED_SETTINGS = {
-  model: MODEL_OPTIONS[0].value,
-  seed: "",
-  resolution: RESOLUTION_PRESETS[0].id,
-};
-const DEFAULT_EXPORT_PRESET = EXPORT_PRESETS[1]?.value ?? EXPORT_PRESETS[0].value;
-const DEFAULT_INSPECTOR_STAGE: InspectorStage = "choosing_options";
-const DEFAULT_ACTIVE_TAB: InspectorTab = "preview";
-
 const TEMPLATE_SNIPPETS = [
   { id: "action", label: "动作", template: "动作：" },
   { id: "shot", label: "镜头", template: "镜头：" },
@@ -140,8 +99,6 @@ const TEMPLATE_SNIPPETS = [
 
 
 const createMessageId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-const createSessionId = () =>
-  `sess_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 const mapJobStatusToSessionStatus = (
   status?: string,
@@ -166,34 +123,6 @@ const mapJobStatusToSessionStatus = (
   return "running";
 };
 
-const buildDefaultSessionDetail = (sessionId: string, createdAt: string): SessionDetail => ({
-  id: sessionId,
-  createdAt,
-  updatedAt: createdAt,
-  status: "draft",
-  messages: INITIAL_MESSAGES,
-  draft: "",
-  options: {
-    style: STYLE_OPTIONS[0].id,
-    mood: MOOD_OPTIONS[0].id,
-    duration: DEFAULT_DURATION,
-    advancedSettings: DEFAULT_ADVANCED_SETTINGS,
-    exportPreset: DEFAULT_EXPORT_PRESET,
-  },
-  ui: {
-    inspectorStage: DEFAULT_INSPECTOR_STAGE,
-    activeTab: DEFAULT_ACTIVE_TAB,
-  },
-});
-
-const INITIAL_MESSAGES: ChatMessage[] = [
-  {
-    id: "system-1",
-    role: "system",
-    content:
-      "我是你的创作助理，会把你的描述拆解成镜头、情绪与节奏。右侧面板已准备好记录风格与参数。发送一句话描述，开始构建场景。",
-  },
-];
 
 export const CreatePage = () => {
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
@@ -401,30 +330,39 @@ export const CreatePage = () => {
       sessionSwitchRef.current = true;
       try {
         if (sessionId && targetId !== sessionId) {
-          saveSessionDetail(buildSessionDetail());
-        }
-        resetJobSubscription();
-        if (targetId) {
-          const detail = getSessionDetail(targetId);
-          if (detail) {
-            applySessionDetail(detail);
-            if (detail.jobId) {
-              subscribeExistingJob(detail.jobId);
-            }
-            return;
+          const existing = getSessionDetail(sessionId);
+          if (existing) {
+            saveSessionDetail(buildSessionDetail());
           }
         }
-        const newId = createSessionId();
-        const now = new Date().toISOString();
-        const detail = buildDefaultSessionDetail(newId, now);
-        setActiveSessionId(newId);
-        saveSessionDetail(detail);
-        applySessionDetail(detail);
+        resetJobSubscription();
+        if (!targetId) {
+          return;
+        }
+        const detail = getSessionDetail(targetId);
+        if (detail) {
+          touchSession(targetId);
+          applySessionDetail(detail);
+          if (detail.jobId) {
+            subscribeExistingJob(detail.jobId);
+          }
+          return;
+        }
+        const fallback = createNewSession();
+        applySessionDetail(fallback);
       } finally {
         sessionSwitchRef.current = false;
       }
     },
-    [applySessionDetail, buildSessionDetail, resetJobSubscription, sessionId, subscribeExistingJob]
+    [
+      applySessionDetail,
+      buildSessionDetail,
+      createNewSession,
+      resetJobSubscription,
+      sessionId,
+      subscribeExistingJob,
+      touchSession,
+    ]
   );
 
   useEffect(() => {

@@ -1,8 +1,17 @@
-import { useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { useSessions } from "../../hooks/useSessions";
-import { getActiveSessionId, setActiveSessionId } from "../../lib/storage";
+import { createNewSession } from "../../lib/sessionActions";
+import {
+  getActiveSessionId,
+  listEmptySessions,
+  removeSession,
+  renameSession,
+  setActiveSessionId,
+  setSessionPinned,
+  touchSession,
+} from "../../lib/storage";
 import "./sidebar.css";
 
 const SIDEBAR_COLLAPSE_KEY = "foranimind.sidebarCollapsed";
@@ -11,6 +20,10 @@ export const AppSidebar = () => {
   const { items } = useSessions();
   const navigate = useNavigate();
   const activeSessionId = getActiveSessionId();
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (typeof localStorage === "undefined") {
       return false;
@@ -18,12 +31,54 @@ export const AppSidebar = () => {
     return localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1";
   });
 
+  useEffect(() => {
+    if (!menuOpenId) {
+      return;
+    }
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (menuRef.current && menuRef.current.contains(target)) {
+        return;
+      }
+      setMenuOpenId(null);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [menuOpenId]);
+
+  useEffect(() => {
+    if (activeSessionId) {
+      return;
+    }
+    if (items.length > 0) {
+      const next = items[0];
+      touchSession(next.id);
+      setActiveSessionId(next.id);
+      return;
+    }
+    createNewSession();
+  }, [activeSessionId, createNewSession, items, setActiveSessionId, touchSession]);
+
   const handleNewProject = () => {
-    setActiveSessionId(null);
+    const emptySessions = listEmptySessions();
+    if (emptySessions.length > 0 && typeof globalThis.confirm === "function") {
+      const shouldClean = globalThis.confirm(
+        `检测到 ${emptySessions.length} 个空项目，是否清理后再新建？`
+      );
+      if (shouldClean) {
+        emptySessions.forEach((session) => removeSession(session.id));
+      }
+    }
+    setMenuOpenId(null);
+    setRenamingId(null);
+    createNewSession();
     navigate("/");
   };
 
   const handleSessionSelect = (sessionId: string) => {
+    touchSession(sessionId);
     setActiveSessionId(sessionId);
     navigate("/");
   };
@@ -38,6 +93,28 @@ export const AppSidebar = () => {
   const handleOpenDetail = (jobId: string, event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     navigate(`/works/${jobId}`);
+  };
+
+  const startRename = (sessionId: string, title: string) => {
+    setMenuOpenId(null);
+    setRenamingId(sessionId);
+    setRenameValue(title);
+  };
+
+  const commitRename = (sessionId: string) => {
+    if (renamingId !== sessionId) {
+      return;
+    }
+    const trimmed = renameValue.trim();
+    if (trimmed) {
+      renameSession(sessionId, trimmed);
+    }
+    setRenamingId(null);
+  };
+
+  const cancelRename = () => {
+    setRenamingId(null);
+    setRenameValue("");
   };
 
   const toggleCollapsed = () => {
@@ -137,42 +214,172 @@ export const AppSidebar = () => {
           {items.length === 0 ? (
             <div className="sidebar-empty">暂无项目</div>
           ) : (
-            items.map((session) => (
-              <div
-                key={session.id}
-                role="button"
-                tabIndex={0}
-                title={session.title}
-                aria-label={session.title}
-                className={`session-item ${activeSessionId === session.id ? "active" : ""}`}
-                onClick={() => handleSessionSelect(session.id)}
-                onKeyDown={(event) => handleSessionKeyDown(session.id, event)}
-              >
-                <div className="session-main">
-                  <span className="session-dot" aria-hidden="true" />
-                  <div className="session-title">{session.title}</div>
-                </div>
-                {session.status === "done" && session.jobId ? (
-                  <button
-                    type="button"
-                    className="session-open"
-                    aria-label="Open detail"
-                    onClick={(event) => handleOpenDetail(session.jobId, event)}
-                  >
-                    <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-                      <path
-                        d="M6 14l8-8M9 6h5v5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+            items.map((session) => {
+              const isActive = activeSessionId === session.id;
+              const isMenuOpen = menuOpenId === session.id;
+              const isRenaming = renamingId === session.id;
+              const statusClass =
+                session.status === "error"
+                  ? "session-status-error"
+                  : session.status === "running" || session.status === "queued"
+                    ? "session-status-running"
+                    : "";
+              return (
+                <div
+                  key={session.id}
+                  role="button"
+                  tabIndex={0}
+                  title={session.title}
+                  aria-label={session.title}
+                  className={`session-item ${statusClass} ${isActive ? "active" : ""}`}
+                  onClick={() => handleSessionSelect(session.id)}
+                  onKeyDown={(event) => handleSessionKeyDown(session.id, event)}
+                >
+                  <div className="session-main">
+                    <span className="session-dot" aria-hidden="true" />
+                    {session.pinned ? (
+                      <span className="session-pin" aria-label="置顶" title="置顶">
+                        <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                          <path
+                            d="M6 3h8l-1 4v2l2 2v1H5v-1l2-2V7z"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.4"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M10 12v5"
+                            stroke="currentColor"
+                            strokeWidth="1.4"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </span>
+                    ) : null}
+                    {isRenaming ? (
+                      <input
+                        className="session-title-input"
+                        value={renameValue}
+                        onChange={(event) => setRenameValue(event.target.value)}
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            commitRename(session.id);
+                          }
+                          if (event.key === "Escape") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            cancelRename();
+                          }
+                        }}
+                        onBlur={() => commitRename(session.id)}
+                        autoFocus
                       />
-                    </svg>
-                  </button>
-                ) : null}
-              </div>
-            ))
+                    ) : (
+                      <div
+                        className="session-title"
+                        onDoubleClick={(event) => {
+                          event.stopPropagation();
+                          startRename(session.id, session.title);
+                        }}
+                      >
+                        {session.title}
+                      </div>
+                    )}
+                  </div>
+                  <div
+                    className="session-actions"
+                    ref={(node) => {
+                      if (isMenuOpen) {
+                        menuRef.current = node;
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        setMenuOpenId(null);
+                      }
+                    }}
+                  >
+                    {session.status === "done" && session.jobId ? (
+                      <button
+                        type="button"
+                        className="session-open"
+                        aria-label="打开详情"
+                        onClick={(event) => handleOpenDetail(session.jobId, event)}
+                      >
+                        <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                          <path
+                            d="M6 14l8-8M9 6h5v5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.6"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="session-action-button"
+                      aria-label="更多操作"
+                      aria-expanded={isMenuOpen}
+                      aria-haspopup="menu"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setMenuOpenId((prev) => (prev === session.id ? null : session.id));
+                      }}
+                    >
+                      ...
+                    </button>
+                    <div className={`session-menu${isMenuOpen ? " open" : ""}`} role="menu">
+                      <button
+                        type="button"
+                        className="session-menu-item"
+                        role="menuitem"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          startRename(session.id, session.title);
+                        }}
+                      >
+                        重命名
+                      </button>
+                      <button
+                        type="button"
+                        className="session-menu-item"
+                        role="menuitem"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setMenuOpenId(null);
+                          setSessionPinned(session.id, !session.pinned);
+                        }}
+                      >
+                        {session.pinned ? "取消置顶" : "置顶"}
+                      </button>
+                      <button
+                        type="button"
+                        className="session-menu-item"
+                        role="menuitem"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setMenuOpenId(null);
+                          removeSession(session.id);
+                        }}
+                      >
+                        删除
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       </div>
