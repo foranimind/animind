@@ -4,17 +4,17 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
-  background: #0b1118;
+  background: var(--surface);
   color: var(--text);
-  font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
-  box-shadow: 0 16px 35px rgba(5, 10, 20, 0.35);
+  font-family: inherit;
+  box-shadow: none;
   transition: border-color var(--enter) var(--ease), box-shadow var(--enter) var(--ease);
 }
 
 .three-preview-canvas {
   position: relative;
   min-height: 320px;
-  background: radial-gradient(circle at 30% 20%, #1a2230 0%, #0b1118 60%);
+  background: radial-gradient(circle at 30% 20%, var(--surface-3) 0%, var(--surface) 60%);
 }
 
 .three-preview-overlay {
@@ -51,15 +51,15 @@
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
-  background: #0f141c;
+  background: var(--surface-2);
   border-top: 1px solid var(--border);
 }
 
 .three-preview-button {
-  background: #1a2230;
+  background: var(--surface-3);
   color: var(--text);
-  border: 1px solid #2a3544;
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 6px 12px;
   cursor: pointer;
   transition: transform var(--enter) var(--ease), background-color var(--enter) var(--ease),
@@ -67,8 +67,8 @@
 }
 
 .three-preview-button:hover {
-  background: #233044;
-  border-color: #394a63;
+  background: rgba(21, 29, 41, 0.9);
+  border-color: var(--border-strong);
   transform: translateY(-1px);
   box-shadow: 0 8px 16px rgba(5, 10, 20, 0.3);
 }
@@ -95,21 +95,21 @@
 
 .three-preview-time {
   font-size: 0.8rem;
-  color: #a3adc2;
+  color: var(--text-muted);
 }
 
 .three-preview-speed {
   display: grid;
   gap: 4px;
   font-size: 0.8rem;
-  color: #a3adc2;
+  color: var(--text-muted);
 }
 
 .three-preview-speed .select-trigger {
-  background: #151c26;
+  background: var(--surface-3);
   color: var(--text);
-  border: 1px solid #2a3544;
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 4px 8px;
   font-size: 0.8rem;
   transition: border-color var(--enter) var(--ease), box-shadow var(--enter) var(--ease),
@@ -117,7 +117,7 @@
 }
 
 .three-preview-speed .select-trigger:hover {
-  border-color: #3a4a63;
+  border-color: var(--border-strong);
 }
 
 .three-preview-speed .select-trigger:focus-visible {
@@ -153,7 +153,7 @@
   gap: 12px;
   padding: 12px;
   border-radius: 16px;
-  border: 1px solid rgba(54, 68, 90, 0.6);
+  border: 1px solid var(--border);
   background: rgba(15, 20, 30, 0.78);
   box-shadow: var(--shadow);
   animation: ui-fade-in var(--enter) var(--ease) both;
@@ -167,7 +167,7 @@
 }
 
 .preview-panel-state {
-  border: 1px dashed #2a3544;
+  border: 1px dashed var(--border-strong);
   border-radius: 12px;
   padding: 16px;
   background: rgba(15, 20, 30, 0.78);
@@ -188,10 +188,10 @@
 
 .preview-panel-state button {
   justify-self: start;
-  background: #1a2230;
+  background: var(--surface-3);
   color: var(--text);
-  border: 1px solid #2a3544;
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 6px 12px;
   cursor: pointer;
   transition: transform var(--enter) var(--ease), background-color var(--enter) var(--ease),
@@ -199,8 +199,8 @@
 }
 
 .preview-panel-state button:hover {
-  background: #233044;
-  border-color: #394a63;
+  background: rgba(21, 29, 41, 0.9);
+  border-color: var(--border-strong);
   transform: translateY(-1px);
   box-shadow: 0 8px 16px rgba(5, 10, 20, 0.3);
 }

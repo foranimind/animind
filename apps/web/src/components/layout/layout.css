@@ -14,6 +14,16 @@
   --exit: 120ms;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --shadow: 0 18px 40px rgba(5, 10, 20, 0.35);
+  --scrollbar-size: 8px;
+  --scrollbar-track: rgba(12, 18, 26, 0.6);
+  --scrollbar-track-border: rgba(12, 18, 26, 0.8);
+  --scrollbar-thumb: rgba(125, 167, 255, 0.6);
+  --scrollbar-thumb-hover: rgba(154, 176, 255, 0.75);
+  --range-track: rgba(36, 46, 64, 0.85);
+  --range-track-border: rgba(52, 66, 86, 0.85);
+  --range-thumb: rgba(154, 176, 255, 0.9);
+  --range-thumb-border: rgba(12, 18, 28, 0.9);
+  --range-thumb-shadow: 0 6px 12px rgba(5, 10, 20, 0.35);
   display: flex;
   min-height: 100vh;
   background: var(--bg);

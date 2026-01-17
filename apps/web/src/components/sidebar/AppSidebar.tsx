@@ -210,7 +210,7 @@ export const AppSidebar = () => {
 
       <div className="sidebar-list">
         <div className="sidebar-list-header">最近项目</div>
-        <div className="sidebar-list-body">
+        <div className={`sidebar-list-body${menuOpenId ? " menu-open" : ""}`}>
           {items.length === 0 ? (
             <div className="sidebar-empty">暂无项目</div>
           ) : (
@@ -223,7 +223,9 @@ export const AppSidebar = () => {
                   ? "session-status-error"
                   : session.status === "running" || session.status === "queued"
                     ? "session-status-running"
-                    : "";
+                    : session.status === "done"
+                      ? "session-status-done"
+                      : "";
               return (
                 <div
                   key={session.id}
@@ -231,7 +233,7 @@ export const AppSidebar = () => {
                   tabIndex={0}
                   title={session.title}
                   aria-label={session.title}
-                  className={`session-item ${statusClass} ${isActive ? "active" : ""}`}
+                  className={`session-item ${statusClass} ${isActive ? "active" : ""}${isMenuOpen ? " menu-open" : ""}`}
                   onClick={() => handleSessionSelect(session.id)}
                   onKeyDown={(event) => handleSessionKeyDown(session.id, event)}
                 >

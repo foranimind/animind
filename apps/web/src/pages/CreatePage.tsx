@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PreviewPanel } from "../components/preview/PreviewPanel";
-import { SelectMenu, type SelectOption } from "../components/ui/SelectMenu";
+import { CreateChatPanel } from "../components/chat/CreateChatPanel";
+import { InspectorOptionsPanel } from "../components/inspector/InspectorOptionsPanel";
+import { InspectorProgressPanel } from "../components/inspector/InspectorProgressPanel";
+import { InspectorResultsPanel } from "../components/inspector/InspectorResultsPanel";
+import type { SelectOption } from "../components/ui/SelectMenu";
 import { useJobRunner } from "../hooks/useJobRunner";
 import { fetchManifest, fetchPreviewConfig, getAssetUrl } from "../lib/api";
 import { createNewSession } from "../lib/sessionActions";
@@ -31,17 +34,14 @@ import {
 } from "../lib/storage";
 import type { Manifest } from "../types/manifest";
 import type { PreviewConfig } from "../types/previewConfig";
+import type {
+  AssetItem,
+  ChatMessage,
+  InspectorStage,
+  InspectorTab,
+  TemplateSnippet,
+} from "./create/types";
 import "./pages.css";
-
-type MessageRole = "user" | "system" | "tool" | "result";
-type ChatMessage = {
-  id: string;
-  role: MessageRole;
-  content: string;
-};
-
-type InspectorStage = "choosing_options" | "running" | "complete";
-type InspectorTab = "preview" | "assets" | "export";
 
 const INSPECTOR_STAGE_LABELS: Record<InspectorStage, string> = {
   choosing_options: "参数",
@@ -84,19 +84,18 @@ const INSPECTOR_STEPS = [
   { id: "review", label: "交付" },
 ];
 
-const INSPECTOR_TABS = [
+const INSPECTOR_TABS: Array<{ id: InspectorTab; label: string }> = [
   { id: "preview", label: "预览" },
   { id: "assets", label: "素材" },
   { id: "export", label: "导出" },
-] as const;
+];
 
-const TEMPLATE_SNIPPETS = [
+const TEMPLATE_SNIPPETS: TemplateSnippet[] = [
   { id: "action", label: "动作", template: "动作：" },
   { id: "shot", label: "镜头", template: "镜头：" },
   { id: "mood", label: "氛围", template: "氛围：" },
   { id: "duration", label: "时长", template: "时长：" },
 ];
-
 
 const createMessageId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
@@ -332,7 +331,10 @@ export const CreatePage = () => {
         if (sessionId && targetId !== sessionId) {
           const existing = getSessionDetail(sessionId);
           if (existing) {
-            saveSessionDetail(buildSessionDetail());
+            saveSessionDetail(
+              buildSessionDetail({ updatedAt: existing.updatedAt }),
+              { updatedAt: existing.updatedAt }
+            );
           }
         }
         resetJobSubscription();
@@ -343,7 +345,7 @@ export const CreatePage = () => {
         if (detail) {
           touchSession(targetId);
           applySessionDetail(detail);
-          if (detail.jobId) {
+          if (detail.jobId && detail.status !== "done" && detail.status !== "error") {
             subscribeExistingJob(detail.jobId);
           }
           return;
@@ -458,7 +460,14 @@ export const CreatePage = () => {
       return;
     }
     const timer = globalThis.setTimeout(() => {
-      saveSessionDetail(buildSessionDetail());
+      const existing = getSessionDetail(sessionId);
+      if (!existing) {
+        return;
+      }
+      saveSessionDetail(
+        buildSessionDetail({ updatedAt: existing.updatedAt }),
+        { updatedAt: existing.updatedAt }
+      );
     }, 400);
     return () => {
       globalThis.clearTimeout(timer);
@@ -493,7 +502,7 @@ export const CreatePage = () => {
     !!jobStatus && !["DONE", "COMPLETED", "FAILED", "ERROR"].includes(normalizedJobStatus);
 
   const assetItems = useMemo(() => {
-    const items: Array<{ id: string; label: string; href: string; kind: string }> = [];
+    const items: AssetItem[] = [];
     const seen = new Set<string>();
     const addItem = (label: string, uri: string | undefined, kind: string) => {
       if (!uri) {
@@ -873,109 +882,19 @@ export const CreatePage = () => {
   return (
     <div className="page create-page">
       <div className="create-shell">
-        <main className="create-chat">
-          <div className="chat-header">
-            <div className="chat-header-main">
-              <div className="chat-title">创作助理</div>
-              <div className="chat-subtitle">一句话描述场景，系统会在侧栏拆解风格与节奏。</div>
-            </div>
-            <div className="chat-header-right">
-              <div className="chat-meta">
-                <span className="meta-pill">Atlas-3 Preview</span>
-                <span className="meta-pill">Storyboard</span>
-              </div>
-              <div className="chat-status">
-                <span className="status-dot" aria-hidden="true" />
-                在线
-              </div>
-            </div>
-          </div>
-
-          <div className="chat-panel">
-            <div className="chat-thread-wrap" ref={chatThreadWrapRef}>
-              <ul className="chat-thread" ref={chatThreadRef}>
-                {messages.map((message) => (
-                  <li key={message.id} className={`chat-message chat-message-${message.role}`}>
-                    <div className="chat-message-content">{message.content}</div>
-                  </li>
-                ))}
-              </ul>
-              <div className="chat-thread-scroll" aria-hidden="true">
-                <div className="chat-thread-scroll-thumb" />
-              </div>
-            </div>
-
-            <form
-              className="chat-input"
-              onSubmit={(event) => {
-                event.preventDefault();
-                handleSend();
-              }}
-            >
-              <div className="chat-input-field">
-                <div className="chat-template-row">
-                  {TEMPLATE_SNIPPETS.map((snippet) => (
-                    <button
-                      key={snippet.id}
-                      type="button"
-                      className="chat-template-button"
-                      onClick={() => insertTemplate(snippet.template)}
-                    >
-                      {snippet.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="chat-input-box" ref={chatInputBoxRef}>
-                  <textarea
-                    ref={inputRef}
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        handleSend();
-                      }
-                    }}
-                    placeholder="描述你的场景、光线、动作与配乐..."
-                    rows={3}
-                  />
-                  <div className="chat-input-scroll" aria-hidden="true">
-                    <div className="chat-input-scroll-thumb" />
-                  </div>
-                  <button
-                    type="submit"
-                    className="send-button"
-                    disabled={!canSend}
-                    aria-label="发送"
-                  >
-                    <svg
-                      className="button-icon"
-                      viewBox="0 0 20 20"
-                      aria-hidden="true"
-                      focusable="false"
-                    >
-                      <path
-                        d="M4 10h9"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                      />
-                      <path
-                        d="M10 5l5 5-5 5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-                <div className="chat-input-hint">Enter 发送，Shift + Enter 换行。</div>
-              </div>
-            </form>
-          </div>
-        </main>
+      <CreateChatPanel
+        messages={messages}
+        templateSnippets={TEMPLATE_SNIPPETS}
+        draft={draft}
+        canSend={canSend}
+        onDraftChange={(value) => setDraft(value)}
+        onSend={handleSend}
+        onInsertTemplate={insertTemplate}
+        chatThreadRef={chatThreadRef}
+        chatThreadWrapRef={chatThreadWrapRef}
+        chatInputBoxRef={chatInputBoxRef}
+        inputRef={inputRef}
+      />
 
         <aside className="create-inspector">
           <div className="inspector-card">
@@ -1006,370 +925,60 @@ export const CreatePage = () => {
 
             <div className="inspector-body">
               {inspectorStage === "choosing_options" && (
-                <>
-                  {!hasPrompt && (
-                    <div className="inspector-callout">发送提示词以解锁生成参数。</div>
-                  )}
-                  <div className="inspector-section">
-                    <div className="inspector-section-title">风格</div>
-                    <div className="style-grid">
-                      {STYLE_OPTIONS.map((option) => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          className={`style-card ${selectedStyle === option.id ? "active" : ""}`}
-                          onClick={() => setSelectedStyle(option.id)}
-                        >
-                          <div className="style-card-title">{option.title}</div>
-                          <div className="style-card-description">{option.description}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="inspector-section">
-                    <div className="inspector-section-title">情绪</div>
-                    <div className="mood-row">
-                      {MOOD_OPTIONS.map((option) => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          className={`mood-chip ${selectedMood === option.id ? "active" : ""}`}
-                          onClick={() => setSelectedMood(option.id)}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="inspector-section">
-                    <div className="duration-row">
-                      <div className="inspector-section-title">时长</div>
-                      <div className="duration-value">{duration}s</div>
-                    </div>
-                    <input
-                      className="duration-slider"
-                      type="range"
-                      min={5}
-                      max={30}
-                      step={1}
-                      value={duration}
-                      onChange={(event) => setDuration(Number(event.target.value))}
-                    />
-                    <div className="duration-hint">片段越短，生成速度越快。</div>
-                  </div>
-
-                  <div className="inspector-section advanced-settings">
-                    <button
-                      type="button"
-                      className="advanced-toggle"
-                      aria-expanded={advancedOpen}
-                      aria-controls="advanced-settings"
-                      onClick={() => setAdvancedOpen((prev) => !prev)}
-                      ref={advancedToggleRef}
-                    >
-                      <span className="advanced-toggle-icon" aria-hidden="true" />
-                      <span className="advanced-toggle-label">高级设置</span>
-                    </button>
-                    {advancedOpen && (
-                      <div className="advanced-panel" id="advanced-settings" ref={advancedPanelRef}>
-                        <label className="field-row">
-                          <span>模型</span>
-                          <SelectMenu
-                            value={advancedSettings.model}
-                            options={MODEL_OPTIONS}
-                            ariaLabel="模型"
-                            onChange={(value) =>
-                              setAdvancedSettings((prev) => ({
-                                ...prev,
-                                model: value,
-                              }))
-                            }
-                          />
-                        </label>
-                        <label className="field-row">
-                          <span>随机种子</span>
-                          <div className="seed-field">
-                            <input
-                              type="number"
-                              min={0}
-                              step={1}
-                              placeholder="自动"
-                              value={advancedSettings.seed}
-                              onChange={(event) =>
-                                setAdvancedSettings((prev) => ({
-                                  ...prev,
-                                  seed: event.target.value,
-                                }))
-                              }
-                            />
-                            <div className="seed-stepper">
-                              <button
-                                type="button"
-                                className="seed-stepper-button"
-                                onClick={() => adjustSeed(1)}
-                                aria-label="增加随机种子"
-                              >
-                                <svg viewBox="0 0 12 12" aria-hidden="true">
-                                  <path
-                                    d="M3 7l3-3 3 3"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1.4"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </svg>
-                              </button>
-                              <button
-                                type="button"
-                                className="seed-stepper-button"
-                                onClick={() => adjustSeed(-1)}
-                                aria-label="减少随机种子"
-                              >
-                                <svg viewBox="0 0 12 12" aria-hidden="true">
-                                  <path
-                                    d="M3 5l3 3 3-3"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1.4"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                        </label>
-                        <label className="field-row">
-                          <span>分辨率</span>
-                          <SelectMenu
-                            value={advancedSettings.resolution}
-                            options={RESOLUTION_SELECT_OPTIONS}
-                            ariaLabel="分辨率"
-                            onChange={(value) =>
-                              setAdvancedSettings((prev) => ({
-                                ...prev,
-                                resolution: value,
-                              }))
-                            }
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    className="primary-button"
-                    disabled={!hasPrompt || isStarting || isJobActive}
-                    onClick={handleStartGeneration}
-                  >
-                    <span>开始生成</span>
-                    <svg className="button-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-                      <path d="M6 4l10 6-10 6z" fill="currentColor" />
-                    </svg>
-                  </button>
-                </>
+                <InspectorOptionsPanel
+                  hasPrompt={hasPrompt}
+                  isStarting={isStarting}
+                  isJobActive={isJobActive}
+                  styleOptions={STYLE_OPTIONS}
+                  moodOptions={MOOD_OPTIONS}
+                  selectedStyle={selectedStyle}
+                  selectedMood={selectedMood}
+                  duration={duration}
+                  advancedOpen={advancedOpen}
+                  advancedSettings={advancedSettings}
+                  modelOptions={MODEL_OPTIONS}
+                  resolutionOptions={RESOLUTION_SELECT_OPTIONS}
+                  onSelectStyle={(value) => setSelectedStyle(value)}
+                  onSelectMood={(value) => setSelectedMood(value)}
+                  onDurationChange={(value) => setDuration(value)}
+                  onToggleAdvanced={() => setAdvancedOpen((prev) => !prev)}
+                  onAdvancedSettingsChange={setAdvancedSettings}
+                  onAdjustSeed={adjustSeed}
+                  advancedToggleRef={advancedToggleRef}
+                  advancedPanelRef={advancedPanelRef}
+                  onStartGeneration={handleStartGeneration}
+                />
               )}
 
               {inspectorStage === "running" && (
-                <>
-                <div className="inspector-progress">
-                  <div className="progress-header">
-                    <div>
-                      <div className="progress-title">生成进度</div>
-                      <div className="progress-subtitle">阶段：{progressStage}</div>
-                      <div className="progress-meta">队列位置：{queueLabel}</div>
-                    </div>
-                    <div className="progress-value">{progressLabel}</div>
-                  </div>
-                    <div className="progress-bar">
-                      <div className="progress-fill" style={{ width: `${progressValue}%` }} />
-                    </div>
-                  </div>
-
-                  <div className="log-panel">
-                    <div className="log-panel-title">实时日志</div>
-                    <ul className="log-list">
-                      {logLines.map((line, index) => (
-                        <li key={`${index}-${line}`}>{line}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <button type="button" className="ghost-button" onClick={handleComplete}>
-                    <span>查看结果</span>
-                    <svg className="button-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-                      <path
-                        d="M4 10h9"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                      />
-                      <path
-                        d="M10 5l5 5-5 5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </>
+                <InspectorProgressPanel
+                  progressStage={progressStage}
+                  progressLabel={progressLabel}
+                  progressValue={progressValue}
+                  queueLabel={queueLabel}
+                  logLines={logLines}
+                  onComplete={handleComplete}
+                />
               )}
 
               {inspectorStage === "complete" && (
-                <>
-                  <div className="inspector-tabs">
-                    {INSPECTOR_TABS.map((tab) => (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        className={`inspector-tab ${activeTab === tab.id ? "active" : ""}`}
-                        onClick={() => setActiveTab(tab.id)}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="inspector-tab-content">
-                    {activeTab === "preview" && (
-                      <>
-                        {previewConfig ? (
-                          <div className="preview-panel-wrapper">
-                            <PreviewPanel
-                              jobId={jobId ?? undefined}
-                              config={previewConfig}
-                              emptyMessage="预览配置已加载"
-                            />
-                          </div>
-                        ) : (
-                          <div className="preview-fallback">
-                            {previewConfigMissing && (
-                              <div className="preview-fallback-banner">
-                                后端尚未生成 preview_config，已降级为资源链接。
-                              </div>
-                            )}
-                            {assetError && (
-                              <div className="preview-fallback-banner preview-fallback-error">
-                                {assetError}
-                              </div>
-                            )}
-                            {isLoadingAssets && (
-                              <div className="preview-placeholder-screen">
-                                <div className="preview-placeholder-hint">正在加载预览资源...</div>
-                              </div>
-                            )}
-                            {!isLoadingAssets && (
-                              <>
-                                <div className="preview-placeholder-screen">
-                                  <div className="preview-placeholder-hint">预览配置不可用</div>
-                                </div>
-                                <div className="preview-placeholder-meta">
-                                  <div className="preview-placeholder-title">可用资源</div>
-                                  <div className="preview-placeholder-subtitle">
-                                    点击以下链接打开或下载。
-                                  </div>
-                                </div>
-                                <div className="preview-link-list">
-                                  {previewLinks.length > 0 ? (
-                                    previewLinks.map((item) => (
-                                      <a
-                                        key={item.id}
-                                        href={item.href}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="preview-link"
-                                      >
-                                        {item.label}
-                                      </a>
-                                    ))
-                                  ) : (
-                                    <div className="preview-placeholder-subtitle">
-                                      暂无可用预览资源。
-                                    </div>
-                                  )}
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )}
-                        {audioPreviewSrc ? (
-                          <div className="preview-audio">
-                            <div className="preview-audio-title">音频预览</div>
-                            <audio controls src={audioPreviewSrc} preload="none" />
-                          </div>
-                        ) : (
-                          <div className="preview-audio-empty">暂无音频</div>
-                        )}
-                      </>
-                    )}
-                    {activeTab === "assets" && (
-                      <div className="assets-panel">
-                        {isLoadingAssets && (
-                          <div className="inspector-callout">正在加载资产清单...</div>
-                        )}
-                        {!isLoadingAssets && assetError && (
-                          <div className="inspector-callout">{assetError}</div>
-                        )}
-                        {!isLoadingAssets && assetDownloads.length === 0 && (
-                          <div className="inspector-callout">暂无可下载资源。</div>
-                        )}
-                        {!isLoadingAssets && assetDownloads.length > 0 && (
-                          <div className="placeholder-grid">
-                            {assetDownloads.map((item) => (
-                              <div key={item.id} className="placeholder-card">
-                                <div className="placeholder-title">{item.label}</div>
-                                <a
-                                  className="asset-link"
-                                  href={item.href}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  打开/下载
-                                </a>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {activeTab === "export" && (
-                      <div className="export-panel">
-                        <div className="export-settings">
-                          <label className="export-field">
-                            <span>导出预设</span>
-                            <SelectMenu
-                              value={exportPreset}
-                              options={EXPORT_SELECT_OPTIONS}
-                              ariaLabel="导出预设"
-                              onChange={setExportPreset}
-                            />
-                          </label>
-                        </div>
-                        <div className="export-actions">
-                          {exportMp4 ? (
-                            <a className="primary-button export-button" href={exportMp4.href} download>
-                              导出视频
-                            </a>
-                          ) : (
-                            <button type="button" className="primary-button export-button" disabled>
-                              导出视频
-                            </button>
-                          )}
-                          <div className="export-note">
-                            {exportMp4
-                              ? "视频已生成，可直接下载。"
-                              : "导出资源尚未生成或导出服务未接入。"}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </>
+                <InspectorResultsPanel
+                  tabs={INSPECTOR_TABS}
+                  activeTab={activeTab}
+                  onTabChange={setActiveTab}
+                  previewConfig={previewConfig}
+                  previewConfigMissing={previewConfigMissing}
+                  assetError={assetError}
+                  isLoadingAssets={isLoadingAssets}
+                  previewLinks={previewLinks}
+                  assetDownloads={assetDownloads}
+                  audioPreviewSrc={audioPreviewSrc}
+                  exportPreset={exportPreset}
+                  exportOptions={EXPORT_SELECT_OPTIONS}
+                  onExportPresetChange={setExportPreset}
+                  exportMp4={exportMp4}
+                  jobId={jobId ?? undefined}
+                />
               )}
             </div>
           </div>
@@ -1378,7 +987,4 @@ export const CreatePage = () => {
     </div>
   );
 };
-
-
-
 
