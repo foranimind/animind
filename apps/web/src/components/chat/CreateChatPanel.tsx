@@ -9,10 +9,10 @@ type CreateChatPanelProps = {
   onDraftChange: (value: string) => void;
   onSend: () => void;
   onInsertTemplate: (template: string) => void;
-  chatThreadRef: RefObject<HTMLUListElement>;
-  chatThreadWrapRef: RefObject<HTMLDivElement>;
-  chatInputBoxRef: RefObject<HTMLDivElement>;
-  inputRef: RefObject<HTMLTextAreaElement>;
+  chatThreadRef: RefObject<HTMLUListElement | null>;
+  chatThreadWrapRef: RefObject<HTMLDivElement | null>;
+  chatInputBoxRef: RefObject<HTMLDivElement | null>;
+  inputRef: RefObject<HTMLTextAreaElement | null>;
 };
 
 export const CreateChatPanel = ({

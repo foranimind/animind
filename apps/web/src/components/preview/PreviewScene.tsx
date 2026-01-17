@@ -186,7 +186,14 @@ const SkeletonRig = ({
   const helper = useMemo(() => new THREE.SkeletonHelper(skeletonRoot), [skeletonRoot]);
 
   useEffect(() => {
-    helper.material.color.setHex(0x7dd3fc);
+    const material = helper.material as
+      | THREE.LineBasicMaterial
+      | THREE.LineBasicMaterial[];
+    if (Array.isArray(material)) {
+      material.forEach((item) => item.color.setHex(0x7dd3fc));
+    } else {
+      material.color.setHex(0x7dd3fc);
+    }
   }, [helper]);
 
   useAnimationPlayback({

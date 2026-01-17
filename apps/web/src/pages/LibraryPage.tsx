@@ -1,20 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { LibraryCommandBar } from "../components/library/LibraryCommandBar";
 import { LibraryFilterDrawer } from "../components/library/LibraryFilterDrawer";
 import type { FilterOption } from "../components/library/LibraryFilters";
 import { WorkCard } from "../components/library/WorkCard";
 import { useRecentWorks } from "../hooks/useRecentWorks";
+import { useResourceMap } from "../hooks/useResourceMap";
 import { fetchManifest } from "../lib/api";
+import { toErrorMessage } from "../lib/errors";
 import { removeWork } from "../lib/storage";
 import type { Manifest } from "../types/manifest";
 import "./pages.css";
 import "../components/library/library.css";
-
-type ManifestEntry =
-  | { status: "loading" }
-  | { status: "ready"; manifest: Manifest }
-  | { status: "error"; error: string };
 
 type WorkSummary = {
   jobId: string;
@@ -45,16 +42,6 @@ const dateOptions: FilterOption[] = [
 const truncate = (value: string, max = 64) =>
   value.length > max ? `${value.slice(0, max - 1)}...` : value;
 
-const toErrorMessage = (error: unknown) => {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  if (typeof error === "string") {
-    return error;
-  }
-  return "加载清单失败。";
-};
-
 const getDuration = (manifest?: Manifest): number | undefined =>
   manifest?.inputs?.duration_s ??
   manifest?.outputs?.motion?.duration_s ??
@@ -64,7 +51,7 @@ const matchesDuration = (duration: number | undefined, filter: string) => {
   if (filter === "any") {
     return true;
   }
-  if (!Number.isFinite(duration)) {
+  if (typeof duration !== "number" || !Number.isFinite(duration)) {
     return false;
   }
   switch (filter) {
@@ -81,74 +68,22 @@ const matchesDuration = (duration: number | undefined, filter: string) => {
 
 export const LibraryPage = () => {
   const { items } = useRecentWorks();
-  const [manifestMap, setManifestMap] = useState<Record<string, ManifestEntry>>({});
+  const jobIds = useMemo(() => items.map((item) => item.jobId), [items]);
+  const mapError = useCallback(
+    (error: unknown) => toErrorMessage(error, "加载清单失败。"),
+    []
+  );
+  const manifestMap = useResourceMap(jobIds, fetchManifest, { mapError });
   const [query, setQuery] = useState("");
   const [styleFilter, setStyleFilter] = useState("all");
   const [durationFilter, setDurationFilter] = useState("any");
   const [dateFilter, setDateFilter] = useState("any");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const updateManifestMap = useCallback(
-    (updater: (prev: Record<string, ManifestEntry>) => Record<string, ManifestEntry>) => {
-      setManifestMap((prev) => updater(prev));
-    },
-    []
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    const currentIds = new Set(items.map((item) => item.jobId));
-    updateManifestMap((prev) => {
-      const next: Record<string, ManifestEntry> = {};
-      let changed = false;
-      for (const [jobId, entry] of Object.entries(prev)) {
-        if (currentIds.has(jobId)) {
-          next[jobId] = entry;
-        } else {
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-
-    items.forEach((item) => {
-      const entry = manifestMap[item.jobId];
-      if (entry) {
-        return;
-      }
-      updateManifestMap((prev) => ({
-        ...prev,
-        [item.jobId]: { status: "loading" },
-      }));
-      fetchManifest(item.jobId)
-        .then((manifest) => {
-          if (cancelled) {
-            return;
-          }
-          updateManifestMap((prev) => ({
-            ...prev,
-            [item.jobId]: { status: "ready", manifest },
-          }));
-        })
-        .catch((error) => {
-          if (cancelled) {
-            return;
-          }
-          updateManifestMap((prev) => ({
-            ...prev,
-            [item.jobId]: { status: "error", error: toErrorMessage(error) },
-          }));
-        });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [items, manifestMap, updateManifestMap]);
-
   const works = useMemo<WorkSummary[]>(() => {
     return items.map((item) => {
       const entry = manifestMap[item.jobId];
-      const manifest = entry && entry.status === "ready" ? entry.manifest : undefined;
+      const manifest = entry && entry.status === "ready" ? entry.data : undefined;
       const prompt = manifest?.inputs?.raw_prompt;
       const title = prompt ? truncate(prompt) : `作品 ${item.jobId}`;
       return {

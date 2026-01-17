@@ -4,6 +4,7 @@ import { PreviewPanel } from "../components/preview/PreviewPanel";
 import { SelectMenu, type SelectOption } from "../components/ui/SelectMenu";
 import { useWorkDetail } from "../hooks/useWorkDetail";
 import { getAssetUrl } from "../lib/api";
+import { getManifestAssetUris, type ManifestAssetKey } from "../lib/manifestAssets";
 import type { Manifest } from "../types/manifest";
 import "./pages.css";
 import "./workDetail.css";
@@ -22,43 +23,43 @@ type AssetItem = {
   uri?: string;
 };
 
-const ASSET_SPECS: Array<
-  Omit<AssetItem, "uri"> & { getUri: (manifest?: Manifest) => string | undefined }
-> = [
+type AssetSpec = Omit<AssetItem, "uri"> & { assetKey: ManifestAssetKey };
+
+const ASSET_SPECS: AssetSpec[] = [
   {
     key: "scene",
     label: "PNG",
     title: "Panorama",
     kind: "image",
-    getUri: (manifest) => manifest?.outputs?.scene?.panorama?.uri,
+    assetKey: "scenePanorama",
   },
   {
     key: "motion",
     label: "BVH",
     title: "Motion",
     kind: "motion",
-    getUri: (manifest) => manifest?.outputs?.motion?.bvh?.uri,
+    assetKey: "motionBvh",
   },
   {
     key: "music",
     label: "WAV",
     title: "Audio",
     kind: "audio",
-    getUri: (manifest) => manifest?.outputs?.music?.wav?.uri,
+    assetKey: "musicWav",
   },
   {
     key: "mp4",
     label: "MP4",
     title: "Video",
     kind: "video",
-    getUri: (manifest) => manifest?.outputs?.export?.mp4?.uri,
+    assetKey: "exportMp4",
   },
   {
     key: "zip",
     label: "ZIP",
     title: "Bundle",
     kind: "bundle",
-    getUri: (manifest) => manifest?.outputs?.export?.zip?.uri,
+    assetKey: "exportZip",
   },
 ];
 
@@ -80,14 +81,16 @@ const CAMERA_OPTIONS: SelectOption[] = [
   { value: "tracking", label: "Tracking" },
 ];
 
-const buildAssets = (manifest?: Manifest): AssetItem[] =>
-  ASSET_SPECS.map((spec) => ({
+const buildAssets = (manifest?: Manifest): AssetItem[] => {
+  const manifestAssets = getManifestAssetUris(manifest);
+  return ASSET_SPECS.map((spec) => ({
     key: spec.key,
     label: spec.label,
     title: spec.title,
     kind: spec.kind,
-    uri: spec.getUri(manifest),
+    uri: manifestAssets[spec.assetKey],
   }));
+};
 
 const AssetIcon = ({ kind }: { kind: AssetKind }) => {
   switch (kind) {

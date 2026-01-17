@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { useSessions } from "../../hooks/useSessions";
@@ -59,7 +65,7 @@ export const AppSidebar = () => {
       return;
     }
     createNewSession();
-  }, [activeSessionId, createNewSession, items, setActiveSessionId, touchSession]);
+  }, [activeSessionId, items]);
 
   const handleNewProject = () => {
     const emptySessions = listEmptySessions();
@@ -90,8 +96,14 @@ export const AppSidebar = () => {
     }
   };
 
-  const handleOpenDetail = (jobId: string, event: MouseEvent<HTMLButtonElement>) => {
+  const handleOpenDetail = (
+    jobId: string | undefined,
+    event: ReactMouseEvent<HTMLButtonElement>
+  ) => {
     event.stopPropagation();
+    if (!jobId) {
+      return;
+    }
     navigate(`/works/${jobId}`);
   };
 

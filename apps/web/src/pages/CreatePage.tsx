@@ -5,7 +5,10 @@ import { InspectorProgressPanel } from "../components/inspector/InspectorProgres
 import { InspectorResultsPanel } from "../components/inspector/InspectorResultsPanel";
 import type { SelectOption } from "../components/ui/SelectMenu";
 import { useJobRunner } from "../hooks/useJobRunner";
+import { useResource } from "../hooks/useAsync";
 import { fetchManifest, fetchPreviewConfig, getAssetUrl } from "../lib/api";
+import { toErrorMessage } from "../lib/errors";
+import { getManifestAssetUris } from "../lib/manifestAssets";
 import { createNewSession } from "../lib/sessionActions";
 import {
   DEFAULT_ACTIVE_TAB,
@@ -32,8 +35,6 @@ import {
   type SessionDetail,
   type SessionStatus,
 } from "../lib/storage";
-import type { Manifest } from "../types/manifest";
-import type { PreviewConfig } from "../types/previewConfig";
 import type {
   AssetItem,
   ChatMessage,
@@ -136,14 +137,8 @@ export const CreatePage = () => {
   const [exportPreset, setExportPreset] = useState(DEFAULT_EXPORT_PRESET);
   const [activeTab, setActiveTab] = useState<InspectorTab>(DEFAULT_ACTIVE_TAB);
   const [toolMessageId, setToolMessageId] = useState<string | null>(null);
-  const [manifest, setManifest] = useState<Manifest | null>(null);
-  const [previewConfig, setPreviewConfig] = useState<PreviewConfig | null>(null);
-  const [previewConfigMissing, setPreviewConfigMissing] = useState(false);
-  const [assetError, setAssetError] = useState<string | null>(null);
-  const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionCreatedAt, setSessionCreatedAt] = useState<string>("");
-  const assetsJobRef = useRef<string | null>(null);
   const chatThreadRef = useRef<HTMLUListElement | null>(null);
   const chatThreadWrapRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -316,12 +311,6 @@ export const CreatePage = () => {
     setExportPreset(detail.options.exportPreset);
     setPendingPrompt(null);
     setToolMessageId(null);
-    setManifest(null);
-    setPreviewConfig(null);
-    setPreviewConfigMissing(false);
-    setAssetError(null);
-    setIsLoadingAssets(false);
-    assetsJobRef.current = null;
   }, []);
 
   const loadSessionById = useCallback(
@@ -359,11 +348,9 @@ export const CreatePage = () => {
     [
       applySessionDetail,
       buildSessionDetail,
-      createNewSession,
       resetJobSubscription,
       sessionId,
       subscribeExistingJob,
-      touchSession,
     ]
   );
 
@@ -501,6 +488,42 @@ export const CreatePage = () => {
   const isJobActive =
     !!jobStatus && !["DONE", "COMPLETED", "FAILED", "ERROR"].includes(normalizedJobStatus);
 
+  const assetJobId = isJobDone ? jobId ?? null : null;
+  const mapAssetError = useCallback(
+    (error: unknown) => toErrorMessage(error, "资源加载失败"),
+    []
+  );
+  const loadManifest = useCallback(
+    () => fetchManifest(assetJobId ?? ""),
+    [assetJobId]
+  );
+  const loadPreviewConfig = useCallback(
+    () => fetchPreviewConfig(assetJobId ?? ""),
+    [assetJobId]
+  );
+  const manifestState = useResource(loadManifest, {
+    enabled: Boolean(assetJobId),
+    mapError: mapAssetError,
+  });
+  const previewConfigState = useResource(loadPreviewConfig, {
+    enabled: Boolean(assetJobId),
+    mapError: mapAssetError,
+  });
+  const manifest =
+    manifestState.status === "ready" ? (manifestState.data ?? null) : null;
+  const previewConfig =
+    previewConfigState.status === "ready" ? (previewConfigState.data ?? null) : null;
+  const previewConfigMissing =
+    previewConfigState.status === "error" && previewConfigState.notFound === true;
+  const assetError =
+    previewConfigState.status === "error" && !previewConfigState.notFound
+      ? previewConfigState.error ?? "资源加载失败"
+      : manifestState.status === "error" && !manifestState.notFound
+        ? manifestState.error ?? "资源加载失败"
+        : null;
+  const isLoadingAssets =
+    manifestState.status === "loading" || previewConfigState.status === "loading";
+
   const assetItems = useMemo(() => {
     const items: AssetItem[] = [];
     const seen = new Set<string>();
@@ -516,12 +539,12 @@ export const CreatePage = () => {
       items.push({ id: `${kind}-${items.length}`, label, href, kind });
     };
 
-    const outputs = manifest?.outputs;
-    addItem("场景全景 PNG", outputs?.scene?.panorama?.uri, "png");
-    addItem("动作 BVH", outputs?.motion?.bvh?.uri, "bvh");
-    addItem("配乐 WAV", outputs?.music?.wav?.uri, "wav");
-    addItem("导出 MP4", outputs?.export?.mp4?.uri, "mp4");
-    addItem("导出 ZIP", outputs?.export?.zip?.uri ?? undefined, "zip");
+    const manifestAssets = getManifestAssetUris(manifest);
+    addItem("场景全景 PNG", manifestAssets.scenePanorama, "png");
+    addItem("动作 BVH", manifestAssets.motionBvh, "bvh");
+    addItem("配乐 WAV", manifestAssets.musicWav, "wav");
+    addItem("导出 MP4", manifestAssets.exportMp4, "mp4");
+    addItem("导出 ZIP", manifestAssets.exportZip, "zip");
 
     if (jobStatus) {
       addItem("预览 MP4", jobStatus.preview_url, "mp4");
@@ -629,7 +652,7 @@ export const CreatePage = () => {
       : buildSessionDetail({ jobId, status, updatedAt: now });
     saveSessionDetail(detail);
     sessionJobIdRef.current = jobId;
-  }, [jobId, sessionId]);
+  }, [buildSessionDetail, jobError, jobId, jobStatus?.status, sessionId]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -650,7 +673,7 @@ export const CreatePage = () => {
       status: mapJobStatusToSessionStatus(statusKey, jobError),
       updatedAt: new Date().toISOString(),
     });
-  }, [jobError, jobStatus?.status, sessionId]);
+  }, [jobError, jobId, jobStatus?.status, sessionId]);
 
   useEffect(() => {
     if (!toolMessageId || !toolMessageContent) {
@@ -674,66 +697,6 @@ export const CreatePage = () => {
     }
   }, [jobStatus]);
 
-  useEffect(() => {
-    if (!jobId || !isJobDone) {
-      return;
-    }
-    if (assetsJobRef.current === jobId) {
-      return;
-    }
-    assetsJobRef.current = jobId;
-    setManifest(null);
-    setPreviewConfig(null);
-    setPreviewConfigMissing(false);
-    setAssetError(null);
-    setIsLoadingAssets(true);
-
-    let cancelled = false;
-    const loadAssets = async () => {
-      const loadError = (error: unknown) =>
-        error instanceof Error ? error.message : "资源加载失败";
-
-      try {
-        const data = await fetchManifest(jobId);
-        if (!cancelled) {
-          setManifest(data);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          const status = (error as { status?: number }).status;
-          if (status && status !== 404) {
-            setAssetError(loadError(error));
-          }
-        }
-      }
-
-      try {
-        const config = await fetchPreviewConfig(jobId);
-        if (!cancelled) {
-          setPreviewConfig(config);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          const status = (error as { status?: number }).status;
-          if (status === 404) {
-            setPreviewConfigMissing(true);
-          } else {
-            setAssetError(loadError(error));
-          }
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingAssets(false);
-        }
-      }
-    };
-
-    loadAssets();
-    return () => {
-      cancelled = true;
-    };
-  }, [isJobDone, jobId]);
-
   const handleStartGeneration = useCallback(async () => {
     if (!hasPrompt || isStarting || isJobActive) {
       return;
@@ -746,12 +709,6 @@ export const CreatePage = () => {
     setToolMessageId(toolId);
     setPendingPrompt(null);
     setInspectorStage("running");
-    setManifest(null);
-    setPreviewConfig(null);
-    setPreviewConfigMissing(false);
-    setAssetError(null);
-    setIsLoadingAssets(false);
-    assetsJobRef.current = null;
     try {
       await startJob();
     } catch (error) {

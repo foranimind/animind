@@ -21,8 +21,8 @@ type InspectorOptionsPanelProps = {
   onToggleAdvanced: () => void;
   onAdvancedSettingsChange: Dispatch<SetStateAction<AdvancedSettings>>;
   onAdjustSeed: (delta: number) => void;
-  advancedToggleRef: RefObject<HTMLButtonElement>;
-  advancedPanelRef: RefObject<HTMLDivElement>;
+  advancedToggleRef: RefObject<HTMLButtonElement | null>;
+  advancedPanelRef: RefObject<HTMLDivElement | null>;
   onStartGeneration: () => void;
 };
 
