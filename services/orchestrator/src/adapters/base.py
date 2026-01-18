@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import subprocess
+import threading
+import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, Tuple, TypedDict, Union
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, TypedDict, Union
 
 from ..storage.manifest import make_asset_url
 from ..uir.validate import validate_uir
@@ -14,6 +17,100 @@ ERROR_CODE_PREFIXES = (
     "E_IO_",
     "E_UNSUPPORTED",
 )
+
+
+class AdapterCanceled(RuntimeError):
+    pass
+
+
+class CancelToken:
+    def __init__(self, check: Optional[Callable[[], bool]] = None) -> None:
+        self._check = check
+        self._lock = threading.Lock()
+        self._canceled = False
+
+    def cancel(self) -> None:
+        with self._lock:
+            self._canceled = True
+
+    def is_canceled(self) -> bool:
+        with self._lock:
+            if self._canceled:
+                return True
+        if self._check is None:
+            return False
+        try:
+            canceled = bool(self._check())
+        except Exception:
+            canceled = True
+        if canceled:
+            with self._lock:
+                self._canceled = True
+        return canceled
+
+
+def run_subprocess(
+    cmd: List[str],
+    *,
+    cwd: Optional[Path] = None,
+    env: Optional[Dict[str, str]] = None,
+    log_handle: Optional[Any] = None,
+    timeout_s: Optional[float] = None,
+    cancel_token: Optional[CancelToken] = None,
+    cancel_check: Optional[Callable[[], bool]] = None,
+    poll_interval_s: float = 0.2,
+) -> subprocess.CompletedProcess:
+    token = cancel_token or (CancelToken(cancel_check) if cancel_check else None)
+    stdout_target = log_handle if log_handle is not None else None
+    stderr_target = log_handle if log_handle is not None else None
+    start_time = time.monotonic()
+    process = subprocess.Popen(
+        cmd,
+        cwd=str(cwd) if cwd is not None else None,
+        env=env,
+        stdout=stdout_target,
+        stderr=stderr_target,
+        text=True,
+    )
+    try:
+        while True:
+            if token is not None and token.is_canceled():
+                _terminate_process(process)
+                raise AdapterCanceled("adapter canceled")
+            return_code = process.poll()
+            if return_code is not None:
+                try:
+                    process.wait(timeout=0.0)
+                except subprocess.TimeoutExpired:
+                    pass
+                return subprocess.CompletedProcess(cmd, return_code)
+            if timeout_s is not None and (time.monotonic() - start_time) > timeout_s:
+                _terminate_process(process)
+                raise subprocess.TimeoutExpired(cmd, timeout_s)
+            time.sleep(poll_interval_s)
+    finally:
+        if process.poll() is None:
+            _terminate_process(process)
+
+
+def _terminate_process(process: subprocess.Popen) -> None:
+    try:
+        process.terminate()
+    except Exception:
+        return
+    try:
+        process.wait(timeout=2.0)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+    try:
+        process.kill()
+    except Exception:
+        return
+    try:
+        process.wait(timeout=2.0)
+    except subprocess.TimeoutExpired:
+        return
 
 
 class AdapterError(TypedDict):
@@ -47,6 +144,8 @@ def build_error(
 
 
 class ProgressReporter(Protocol):
+    cancel_token: Optional[CancelToken]
+
     def stage(
         self,
         name: str,
@@ -57,6 +156,9 @@ class ProgressReporter(Protocol):
         ...
 
     def log(self, line: str) -> None:
+        ...
+
+    def is_canceled(self) -> bool:
         ...
 
 

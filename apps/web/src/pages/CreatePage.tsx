@@ -100,7 +100,7 @@ const mapJobStatusToSessionStatus = (
   if (normalized === "DONE" || normalized === "COMPLETED") {
     return "done";
   }
-  if (normalized === "FAILED" || normalized === "ERROR") {
+  if (normalized === "FAILED" || normalized === "ERROR" || normalized === "CANCELED") {
     return "error";
   }
   return "running";
@@ -459,7 +459,8 @@ export const CreatePage = () => {
         : "--";
   const isJobDone = normalizedJobStatus === "DONE" || normalizedJobStatus === "COMPLETED";
   const isJobActive =
-    !!jobStatus && !["DONE", "COMPLETED", "FAILED", "ERROR"].includes(normalizedJobStatus);
+    !!jobStatus &&
+    !["DONE", "COMPLETED", "FAILED", "ERROR", "CANCELED"].includes(normalizedJobStatus);
 
   const assetJobId = isJobDone ? jobId ?? null : null;
   const mapAssetError = useCallback(
@@ -565,6 +566,9 @@ export const CreatePage = () => {
     }
     if (normalizedStatus === "ERROR" || normalizedStatus === "FAILED") {
       return `生成失败：${jobStatus.message ?? "未知错误"}`;
+    }
+    if (normalizedStatus === "CANCELED") {
+      return `已取消：${jobStatus.message ?? "任务已取消"}`;
     }
     const toolLogLines =
       jobStatus.logs_tail && jobStatus.logs_tail.length > 0

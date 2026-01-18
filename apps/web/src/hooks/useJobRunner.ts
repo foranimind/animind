@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { createJob, getJob, subscribeJobEvents } from "../lib/api";
 import type { JobEvent, JobStatus } from "../types/job";
+import { isTerminalJobStatus } from "../types/job";
 import type { CreateJobOptions } from "../types/options";
 
 type ConnectionState = "idle" | "connecting" | "connected" | "disconnected";
@@ -50,6 +51,7 @@ const extractEventInfo = (data: unknown) => {
       toNumber(record.progress) ??
       toNumber(record.percent) ??
       toNumber(record.pct),
+    status: toString(record.status),
     stage: toString(record.stage) ?? toString(record.status) ?? toString(record.phase),
     message:
       toString(record.message) ??
@@ -115,7 +117,9 @@ const applyEventToStatus = (prev: JobStatus | null, event: JobEvent): JobStatus 
   switch (event.type) {
     case "progress":
     case "stage":
-      if (base.status === "QUEUED") {
+      if (info.status) {
+        next.status = info.status;
+      } else if (base.status === "QUEUED") {
         next.status = "RUNNING";
       }
       if (info.progress !== undefined) {
@@ -132,7 +136,9 @@ const applyEventToStatus = (prev: JobStatus | null, event: JobEvent): JobStatus 
       }
       break;
     case "log":
-      if (base.status === "QUEUED") {
+      if (info.status) {
+        next.status = info.status;
+      } else if (base.status === "QUEUED") {
         next.status = "RUNNING";
       }
       next.logs_tail = mergeLogs(base.logs_tail, info.logsTail, info.message);
@@ -141,7 +147,7 @@ const applyEventToStatus = (prev: JobStatus | null, event: JobEvent): JobStatus 
       }
       break;
     case "done":
-      next.status = "DONE";
+      next.status = info.status ?? "DONE";
       next.stage = info.stage ?? "DONE";
       next.progress = info.progress ?? 100;
       if (info.message) {
@@ -152,7 +158,7 @@ const applyEventToStatus = (prev: JobStatus | null, event: JobEvent): JobStatus 
       }
       break;
     case "error":
-      next.status = "ERROR";
+      next.status = info.status ?? "ERROR";
       if (info.message) {
         next.message = info.message;
       }
@@ -183,19 +189,6 @@ const mergePolledStatus = (prev: JobStatus | null, next: JobStatus): JobStatus =
     merged.logs_tail = prev.logs_tail;
   }
   return merged;
-};
-
-const isTerminalStatus = (status?: string): boolean => {
-  if (!status) {
-    return false;
-  }
-  const normalized = status.toUpperCase();
-  return (
-    normalized === "DONE" ||
-    normalized === "COMPLETED" ||
-    normalized === "FAILED" ||
-    normalized === "ERROR"
-  );
 };
 
 export const useJobRunner = (
@@ -256,7 +249,7 @@ export const useJobRunner = (
         try {
           const status = await getJob(activeJobId);
           setJobStatus((prev) => mergePolledStatus(prev, status));
-          if (isTerminalStatus(status.status)) {
+          if (isTerminalJobStatus(status.status)) {
             stop();
           }
         } catch {
@@ -374,7 +367,7 @@ export const useJobRunner = (
   }, [connectionState, jobId, startPolling, stopPolling]);
 
   useEffect(() => {
-    if (jobStatus && isTerminalStatus(jobStatus.status)) {
+    if (jobStatus && isTerminalJobStatus(jobStatus.status)) {
       stop();
     }
   }, [jobStatus, stop]);

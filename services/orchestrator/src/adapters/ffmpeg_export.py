@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import subprocess
 import sys
 import time
 import zipfile
@@ -11,11 +10,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from .base import (
+    AdapterCanceled,
     AdapterResult,
     BaseAdapter,
     ProgressReporter,
     build_asset_ref,
     build_error,
+    run_subprocess,
 )
 from ..scheduler.store import JOB_STORE
 from ..uir.validate import validate_uir
@@ -223,14 +224,12 @@ class FfmpegExportAdapter(BaseAdapter):
             with log_path.open("a", encoding="utf-8") as log_handle:
                 log_handle.write("[render_cmd] " + " ".join(render_cmd) + "\n")
                 log_handle.flush()
-                result = subprocess.run(
+                result = run_subprocess(
                     render_cmd,
-                    cwd=str(render_cwd) if render_cwd is not None else None,
-                    stdout=log_handle,
-                    stderr=log_handle,
-                    text=True,
+                    cwd=render_cwd,
                     env=run_env,
-                    check=False,
+                    log_handle=log_handle,
+                    cancel_check=reporter.is_canceled,
                 )
         except OSError as exc:
             return _error_result(
@@ -286,12 +285,10 @@ class FfmpegExportAdapter(BaseAdapter):
             with log_path.open("a", encoding="utf-8") as log_handle:
                 log_handle.write("[compose_cmd] " + " ".join(cmd) + "\n")
                 log_handle.flush()
-                result = subprocess.run(
+                result = run_subprocess(
                     cmd,
-                    stdout=log_handle,
-                    stderr=log_handle,
-                    text=True,
-                    check=False,
+                    log_handle=log_handle,
+                    cancel_check=reporter.is_canceled,
                 )
         except OSError as exc:
             return _error_result(
@@ -376,6 +373,8 @@ def _run_zip_export(
     try:
         with zipfile.ZipFile(output_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             for file_path, arcname in files:
+                if reporter.is_canceled():
+                    raise AdapterCanceled("adapter canceled")
                 archive.write(file_path, arcname)
     except OSError as exc:
         return _error_result(

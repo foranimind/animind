@@ -7,7 +7,7 @@ from .events import EVENT_BUS
 from .models import JobStatus
 from .reporter import ProgressReporter
 from .store import JobStore
-from ..adapters.base import AdapterResult, build_error
+from ..adapters.base import AdapterCanceled, AdapterResult, CancelToken, build_error
 from ..adapters.registry import get_adapter
 from ..config.runtime import get_runtime_paths
 from ..storage.job_fs import ensure_job_dirs
@@ -82,6 +82,7 @@ async def _run_job(store: JobStore, job_id: str) -> None:
     if not job:
         return
     reporter = ProgressReporter(job_id, store, EVENT_BUS)
+    cancel_token = CancelToken(lambda: _is_canceled(store, job_id))
     if job.status == JobStatus.CANCELED:
         await reporter.status(
             JobStatus.CANCELED,
@@ -188,7 +189,11 @@ async def _run_job(store: JobStore, job_id: str) -> None:
                     reporter,
                     stage,
                     progress_range,
+                    cancel_token,
                 )
+            except AdapterCanceled:
+                await _mark_canceled(store, reporter, job_id)
+                return
             except Exception as exc:
                 error = build_error(
                     "E_MODEL_RUNTIME",
@@ -204,6 +209,9 @@ async def _run_job(store: JobStore, job_id: str) -> None:
                     f"{modality} failed",
                     error,
                 )
+                return
+            if _is_canceled(store, job_id):
+                await _mark_canceled(store, reporter, job_id)
                 return
             if not _result_ok(result):
                 error = _result_error(result, provider_id)
@@ -221,6 +229,9 @@ async def _run_job(store: JobStore, job_id: str) -> None:
             await _emit_asset_events(reporter, artifacts)
             await reporter.status(stage, end, f"{modality} done")
             _write_manifest(store, job_id, stage.value, [])
+        if _is_canceled(store, job_id):
+            await _mark_canceled(store, reporter, job_id)
+            return
         await reporter.status(JobStatus.DONE, 1.0, "done")
         _write_manifest(store, job_id, JobStatus.DONE.value, [])
     except Exception as exc:
@@ -248,9 +259,10 @@ async def _run_adapter(
     reporter: ProgressReporter,
     stage: JobStatus,
     progress_range: Tuple[float, float],
+    cancel_token: Optional[CancelToken] = None,
 ) -> AdapterResult:
     loop = asyncio.get_running_loop()
-    bridge = _AdapterReporter(loop, reporter, stage, progress_range)
+    bridge = _AdapterReporter(loop, reporter, stage, progress_range, cancel_token)
     semaphore = _provider_semaphore(provider_id, adapter)
     await semaphore.acquire()
     try:
@@ -286,11 +298,13 @@ class _AdapterReporter:
         reporter: ProgressReporter,
         stage: JobStatus,
         progress_range: Tuple[float, float],
+        cancel_token: Optional[CancelToken] = None,
     ) -> None:
         self._loop = loop
         self._reporter = reporter
         self._stage = stage
         self._start, self._end = progress_range
+        self.cancel_token = cancel_token
 
     def stage(
         self,
@@ -307,6 +321,11 @@ class _AdapterReporter:
 
     def log(self, line: str) -> None:
         self._schedule(self._reporter.log(line))
+
+    def is_canceled(self) -> bool:
+        if self.cancel_token is None:
+            return False
+        return self.cancel_token.is_canceled()
 
     def _schedule(self, coro: Any) -> None:
         asyncio.run_coroutine_threadsafe(coro, self._loop)

@@ -15,6 +15,7 @@
 | --- | --- | --- |
 | `/api/jobs` | `POST` | 创建任务，`{ prompt, options? }` -> `{ job_id }` |
 | `/api/jobs/{job_id}` | `GET` | 查询状态 |
+| `/api/jobs/{job_id}/cancel` | `POST` | 取消任务（幂等） |
 | `/api/jobs/{job_id}/events` | `GET` | SSE 订阅任务事件 |
 | `/assets/{job_id}/...` | `GET` | 静态资源（manifest / scene / motion / music 等） |
 
@@ -182,6 +183,34 @@ SSE 订阅任务事件，`event` 与 `data` 见第 4 节。
 /assets/{job_id}/scene/scene.png
 /assets/{job_id}/motion/motion.bvh
 /assets/{job_id}/music/music.wav
+```
+
+### 5.5 POST /api/jobs/{job_id}/cancel
+
+取消任务（幂等）。若任务已完成/失败/取消，会返回当前状态，不做变更。
+
+Request（可选）
+
+```json
+{
+  "message": "canceled"
+}
+```
+
+Response（结构同 GET /api/jobs/{job_id}）
+
+```json
+{
+  "job_id": "job_1001",
+  "status": "CANCELED",
+  "stage": "CANCELED",
+  "progress": 62,
+  "message": "canceled",
+  "created_at": "2025-12-20T12:00:00Z",
+  "started_at": "2025-12-20T12:00:05Z",
+  "ended_at": "2025-12-20T12:00:40Z",
+  "manifest_url": "/assets/job_1001/manifest.json"
+}
 ```
 
 ## 6. 完整用例
