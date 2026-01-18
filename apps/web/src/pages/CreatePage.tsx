@@ -6,10 +6,12 @@ import { InspectorResultsPanel } from "../components/inspector/InspectorResultsP
 import type { SelectOption } from "../components/ui/SelectMenu";
 import { useJobRunner } from "../hooks/useJobRunner";
 import { useResource } from "../hooks/useAsync";
+import { useDismissable } from "../hooks/useDismissable";
 import { fetchManifest, fetchPreviewConfig, getAssetUrl } from "../lib/api";
 import { toErrorMessage } from "../lib/errors";
-import { getManifestAssetUris } from "../lib/manifestAssets";
+import { getManifestAssetUris, getManifestSummary } from "../lib/manifestAssets";
 import { createNewSession } from "../lib/sessionActions";
+import { resolveJobStageLabel } from "../lib/status";
 import {
   DEFAULT_ACTIVE_TAB,
   DEFAULT_ADVANCED_SETTINGS,
@@ -59,25 +61,6 @@ const EXPORT_SELECT_OPTIONS: SelectOption[] = EXPORT_PRESETS.map((preset) => ({
   value: preset.value,
   label: preset.label,
 }));
-
-const STAGE_LABELS: Record<string, string> = {
-  QUEUED: "排队中",
-  PLANNING: "规划",
-  RUNNING_MOTION: "动作",
-  RUNNING_SCENE: "场景",
-  RUNNING_MUSIC: "音乐",
-  COMPOSING_PREVIEW: "预览合成",
-  EXPORTING_VIDEO: "导出",
-  DONE: "完成",
-  FAILED: "失败",
-  CANCELED: "已取消",
-  ERROR: "错误",
-};
-
-const resolveStageLabel = (stage?: string, status?: string) => {
-  const key = (stage ?? status ?? "").toUpperCase();
-  return STAGE_LABELS[key] ?? stage ?? status ?? "准备中";
-};
 
 const INSPECTOR_STEPS = [
   { id: "options", label: "参数" },
@@ -145,6 +128,10 @@ export const CreatePage = () => {
   const chatInputBoxRef = useRef<HTMLDivElement | null>(null);
   const advancedToggleRef = useRef<HTMLButtonElement | null>(null);
   const advancedPanelRef = useRef<HTMLDivElement | null>(null);
+  const advancedDismissRefs = useMemo(
+    () => [advancedPanelRef, advancedToggleRef],
+    [advancedPanelRef, advancedToggleRef]
+  );
   const recentSaveRef = useRef<string>("");
   const sessionInitRef = useRef(false);
   const lastSessionStatusRef = useRef<string | null>(null);
@@ -362,25 +349,11 @@ export const CreatePage = () => {
     loadSessionById(getActiveSessionId());
   }, [loadSessionById]);
 
-  useEffect(() => {
-    if (!advancedOpen) {
-      return;
-    }
-    const handlePointer = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (
-        (advancedPanelRef.current && advancedPanelRef.current.contains(target)) ||
-        (advancedToggleRef.current && advancedToggleRef.current.contains(target))
-      ) {
-        return;
-      }
-      setAdvancedOpen(false);
-    };
-    document.addEventListener("mousedown", handlePointer);
-    return () => {
-      document.removeEventListener("mousedown", handlePointer);
-    };
-  }, [advancedOpen]);
+  useDismissable({
+    enabled: advancedOpen,
+    refs: advancedDismissRefs,
+    onDismiss: () => setAdvancedOpen(false),
+  });
 
   useEffect(() => {
     const textarea = inputRef.current;
@@ -469,7 +442,7 @@ export const CreatePage = () => {
       ? Math.max(0, Math.min(100, Math.round(jobStatus.progress)))
       : 0;
   const progressLabel = typeof jobStatus?.progress === "number" ? `${progressValue}%` : "--";
-  const progressStage = resolveStageLabel(jobStatus?.stage, jobStatus?.status);
+  const progressStage = resolveJobStageLabel(jobStatus?.stage, jobStatus?.status);
   const logLines =
     jobStatus?.logs_tail && jobStatus.logs_tail.length > 0
       ? jobStatus.logs_tail.slice(-3)
@@ -797,10 +770,10 @@ export const CreatePage = () => {
     if (!manifest && !previewConfig) {
       return;
     }
-    const title = (manifest?.inputs?.raw_prompt ?? latestPrompt).trim();
-    const previewUri =
-      manifest?.outputs?.scene?.panorama?.uri ?? previewConfig?.scene?.panorama_uri;
-    const createdAt = manifest?.created_at ?? new Date().toISOString();
+    const summary = getManifestSummary(manifest);
+    const title = (summary.title ?? latestPrompt).trim();
+    const previewUri = summary.thumbnailUri ?? previewConfig?.scene?.panorama_uri;
+    const createdAt = summary.createdAt ?? new Date().toISOString();
     const signature = JSON.stringify({
       jobId,
       title,

@@ -1,4 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+
+import { useDismissable } from "../../hooks/useDismissable";
 
 export type SelectOption = {
   value: string;
@@ -28,28 +30,11 @@ export const SelectMenu = ({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find((option) => option.value === value);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const handlePointer = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (menuRef.current && !menuRef.current.contains(target)) {
-        setOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handlePointer);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointer);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
+  useDismissable({
+    enabled: open,
+    refs: menuRef,
+    onDismiss: () => setOpen(false),
+  });
 
   useLayoutEffect(() => {
     if (!open) {

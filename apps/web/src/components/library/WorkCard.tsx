@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { getAssetUrl } from "../../lib/api";
+import { getWorkStatusDisplay } from "../../lib/status";
+import { useDismissable } from "../../hooks/useDismissable";
 
 type WorkCardProps = {
   jobId: string;
@@ -34,25 +36,6 @@ const formatDate = (value?: string) => {
   return parsed.toLocaleString();
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  error: "错误",
-  loading: "加载中",
-  unknown: "未知",
-  queued: "排队中",
-  planning: "规划中",
-  running: "生成中",
-  running_motion: "动作生成",
-  running_scene: "场景生成",
-  running_music: "音乐生成",
-  composing_preview: "合成预览",
-  exporting_video: "导出中",
-  done: "完成",
-  completed: "完成",
-  success: "完成",
-  canceled: "已取消",
-  failed: "失败",
-};
-
 export const WorkCard = ({
   jobId,
   title,
@@ -75,37 +58,17 @@ export const WorkCard = ({
   const displayStyle = style || "默认";
   const displayDuration = formatDuration(duration);
   const displayDate = formatDate(createdAt);
-  const normalizedStatus = (status ?? "").toLowerCase();
-  const rawStatus = error ? "error" : loading ? "loading" : normalizedStatus || "unknown";
-  const displayStatus =
-    STATUS_LABELS[rawStatus] ??
-    rawStatus.replace(/_/g, " ").replace(/^\w/, (match) => match.toUpperCase());
-  const hasStatus = Boolean(error || loading || normalizedStatus);
-  const statusTone = error
-    ? "error"
-    : loading
-      ? "loading"
-      : ["done", "completed", "success"].includes(normalizedStatus)
-        ? "ready"
-        : normalizedStatus
-          ? "idle"
-          : "unknown";
+  const { label: displayStatus, tone: statusTone, hasStatus } = getWorkStatusDisplay({
+    status,
+    loading,
+    error,
+  });
 
-  useEffect(() => {
-    if (!menuOpen) {
-      return;
-    }
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (menuRef.current && !menuRef.current.contains(target)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-    };
-  }, [menuOpen]);
+  useDismissable({
+    enabled: menuOpen,
+    refs: menuRef,
+    onDismiss: () => setMenuOpen(false),
+  });
 
   return (
     <article className="work-card">
@@ -139,11 +102,6 @@ export const WorkCard = ({
       <div
         className="work-card-actions"
         ref={menuRef}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            setMenuOpen(false);
-          }
-        }}
       >
         <button
           type="button"

@@ -8,8 +8,8 @@ import { useRecentWorks } from "../hooks/useRecentWorks";
 import { useResourceMap } from "../hooks/useResourceMap";
 import { fetchManifest } from "../lib/api";
 import { toErrorMessage } from "../lib/errors";
+import { getManifestSummary } from "../lib/manifestAssets";
 import { removeWork } from "../lib/storage";
-import type { Manifest } from "../types/manifest";
 import "./pages.css";
 import "../components/library/library.css";
 
@@ -41,11 +41,6 @@ const dateOptions: FilterOption[] = [
 
 const truncate = (value: string, max = 64) =>
   value.length > max ? `${value.slice(0, max - 1)}...` : value;
-
-const getDuration = (manifest?: Manifest): number | undefined =>
-  manifest?.inputs?.duration_s ??
-  manifest?.outputs?.motion?.duration_s ??
-  manifest?.outputs?.music?.duration_s;
 
 const matchesDuration = (duration: number | undefined, filter: string) => {
   if (filter === "any") {
@@ -84,17 +79,17 @@ export const LibraryPage = () => {
     return items.map((item) => {
       const entry = manifestMap[item.jobId];
       const manifest = entry && entry.status === "ready" ? entry.data : undefined;
-      const prompt = manifest?.inputs?.raw_prompt;
-      const title = prompt ? truncate(prompt) : `作品 ${item.jobId}`;
+      const summary = getManifestSummary(manifest);
+      const title = summary.title ? truncate(summary.title) : `作品 ${item.jobId}`;
       return {
         jobId: item.jobId,
         title,
-        prompt,
-        style: manifest?.inputs?.style,
-        duration: getDuration(manifest),
-        status: manifest?.status,
-        createdAt: manifest?.created_at ?? item.meta.createdAt,
-        thumbnailUri: manifest?.outputs?.scene?.panorama?.uri,
+        prompt: summary.prompt,
+        style: summary.style,
+        duration: summary.duration,
+        status: summary.status,
+        createdAt: summary.createdAt ?? item.meta.createdAt,
+        thumbnailUri: summary.thumbnailUri,
         loading: entry?.status === "loading",
         error: entry?.status === "error" ? entry.error : undefined,
       };

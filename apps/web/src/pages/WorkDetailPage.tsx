@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { PreviewPanel } from "../components/preview/PreviewPanel";
 import { SelectMenu, type SelectOption } from "../components/ui/SelectMenu";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useDismissable } from "../hooks/useDismissable";
 import { useWorkDetail } from "../hooks/useWorkDetail";
 import { getAssetUrl } from "../lib/api";
 import { getManifestAssetUris, type ManifestAssetKey } from "../lib/manifestAssets";
+import { getWorkDetailStatusInfo } from "../lib/status";
 import type { Manifest } from "../types/manifest";
 import "./pages.css";
 import "./workDetail.css";
@@ -144,6 +147,7 @@ export const WorkDetailPage = ({ jobId }: WorkDetailPageProps) => {
   const [panelOpen, setPanelOpen] = useState(false);
   const [assetsOpen, setAssetsOpen] = useState(true);
   const [exportExpanded, setExportExpanded] = useState(false);
+  const panelRef = useRef<HTMLElement | null>(null);
 
   const { manifest, preview, reload } = useWorkDetail(resolvedJobId);
   const assets = useMemo(
@@ -152,47 +156,27 @@ export const WorkDetailPage = ({ jobId }: WorkDetailPageProps) => {
   );
   const manifestRaw =
     manifest.status === "ready" ? JSON.stringify(manifest.data, null, 2) : "";
-  const statusInfo = useMemo(() => {
-    if (manifest.status === "loading") {
-      return { label: "Loading", tone: "loading" };
-    }
-    if (manifest.status === "error") {
-      return { label: manifest.notFound ? "Not found" : "Error", tone: "error" };
-    }
-    if (manifest.status === "ready" && preview.status === "loading") {
-      return { label: "Preview loading", tone: "loading" };
-    }
-    if (preview.status === "error") {
-      return { label: "Preview issue", tone: "warning" };
-    }
-    if (manifest.status === "ready") {
-      return { label: "Ready", tone: "ready" };
-    }
-    return { label: "Idle", tone: "idle" };
-  }, [manifest.notFound, manifest.status, preview.status]);
+  const statusInfo = useMemo(
+    () =>
+      getWorkDetailStatusInfo({
+        manifestStatus: manifest.status,
+        previewStatus: preview.status,
+        manifestNotFound: manifest.notFound,
+      }),
+    [manifest.notFound, manifest.status, preview.status]
+  );
   const exportSummary = useMemo(() => {
     const resolutionLabel = resolution === "4k" ? "4K" : resolution;
     const cameraLabel = cameraPreset.replace(/^\w/, (match) => match.toUpperCase());
     return `${resolutionLabel} \u00b7 ${fps}fps \u00b7 ${cameraLabel}`;
   }, [cameraPreset, fps, resolution]);
 
-  useEffect(() => {
-    if (!panelOpen) {
-      return;
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setPanelOpen(false);
-      }
-    };
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [panelOpen]);
+  useDismissable({
+    enabled: panelOpen,
+    refs: panelRef,
+    onDismiss: () => setPanelOpen(false),
+  });
+  useBodyScrollLock(panelOpen);
 
   const handleCopy = async () => {
     if (!resolvedJobId) {
@@ -331,8 +315,13 @@ export const WorkDetailPage = ({ jobId }: WorkDetailPageProps) => {
       </section>
 
       <div className={`work-detail-drawer${panelOpen ? " open" : ""}`} aria-hidden={!panelOpen}>
-        <div className="work-detail-drawer-overlay" onClick={() => setPanelOpen(false)} />
-        <aside className="work-detail-drawer-panel" role="dialog" aria-modal="true">
+        <div className="work-detail-drawer-overlay" />
+        <aside
+          className="work-detail-drawer-panel"
+          role="dialog"
+          aria-modal="true"
+          ref={panelRef}
+        >
           <header className="work-detail-drawer-header">
             <div>
               <div className="work-detail-drawer-title">Assets & Export</div>

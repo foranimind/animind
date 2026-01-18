@@ -7,6 +7,7 @@ import {
 } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
+import { useDismissable } from "../../hooks/useDismissable";
 import { useSessions } from "../../hooks/useSessions";
 import { createNewSession } from "../../lib/sessionActions";
 import {
@@ -37,22 +38,11 @@ export const AppSidebar = () => {
     return localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1";
   });
 
-  useEffect(() => {
-    if (!menuOpenId) {
-      return;
-    }
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (menuRef.current && menuRef.current.contains(target)) {
-        return;
-      }
-      setMenuOpenId(null);
-    };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-    };
-  }, [menuOpenId]);
+  useDismissable({
+    enabled: Boolean(menuOpenId),
+    refs: menuRef,
+    onDismiss: () => setMenuOpenId(null),
+  });
 
   useEffect(() => {
     if (activeSessionId) {
@@ -309,11 +299,6 @@ export const AppSidebar = () => {
                     ref={(node) => {
                       if (isMenuOpen) {
                         menuRef.current = node;
-                      }
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        setMenuOpenId(null);
                       }
                     }}
                   >
