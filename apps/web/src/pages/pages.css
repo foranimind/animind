@@ -1290,6 +1290,21 @@ body {
   background: rgba(24, 33, 50, 0.8);
 }
 
+.ghost-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ghost-button.danger {
+  border-color: rgba(255, 126, 126, 0.7);
+  color: #ffd6d6;
+}
+
+.ghost-button.danger:hover {
+  border-color: rgba(255, 166, 166, 0.8);
+  background: rgba(56, 24, 28, 0.6);
+}
+
 .inspector-progress {
   display: grid;
   gap: 10px;
@@ -1297,6 +1312,12 @@ body {
   border-radius: 14px;
   border: 1px solid rgba(45, 60, 82, 0.9);
   background: var(--surface-3);
+}
+
+.progress-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .progress-header {

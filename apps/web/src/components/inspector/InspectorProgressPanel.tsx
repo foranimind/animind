@@ -4,7 +4,11 @@ type InspectorProgressPanelProps = {
   progressValue: number;
   queueLabel: string;
   logLines: string[];
+  actionLabel?: string;
   onComplete: () => void;
+  onCancel?: () => void;
+  isCanceling?: boolean;
+  canCancel?: boolean;
 };
 
 export const InspectorProgressPanel = ({
@@ -13,7 +17,11 @@ export const InspectorProgressPanel = ({
   progressValue,
   queueLabel,
   logLines,
+  actionLabel = "查看结果",
   onComplete,
+  onCancel,
+  isCanceling = false,
+  canCancel = true,
 }: InspectorProgressPanelProps) => (
   <>
     <div className="inspector-progress">
@@ -39,19 +47,31 @@ export const InspectorProgressPanel = ({
       </ul>
     </div>
 
-    <button type="button" className="ghost-button" onClick={onComplete}>
-      <span>查看结果</span>
-      <svg className="button-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-        <path d="M4 10h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        <path
-          d="M10 5l5 5-5 5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </button>
+    <div className="progress-actions">
+      {onCancel ? (
+        <button
+          type="button"
+          className="ghost-button danger"
+          onClick={onCancel}
+          disabled={!canCancel || isCanceling}
+        >
+          <span>{isCanceling ? "取消中..." : "取消生成"}</span>
+        </button>
+      ) : null}
+      <button type="button" className="ghost-button" onClick={onComplete}>
+        <span>{actionLabel}</span>
+        <svg className="button-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+          <path d="M4 10h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path
+            d="M10 5l5 5-5 5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+    </div>
   </>
 );

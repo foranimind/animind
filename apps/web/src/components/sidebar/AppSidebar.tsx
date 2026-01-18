@@ -223,6 +223,8 @@ export const AppSidebar = () => {
               const statusClass =
                 session.status === "error"
                   ? "session-status-error"
+                  : session.status === "canceled"
+                    ? "session-status-canceled"
                   : session.status === "running" || session.status === "queued"
                     ? "session-status-running"
                     : session.status === "done"

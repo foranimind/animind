@@ -359,6 +359,11 @@
   box-shadow: 0 0 0 2px rgba(255, 117, 117, 0.2);
 }
 
+.session-item.session-status-canceled .session-dot {
+  background: rgba(241, 183, 93, 0.95);
+  box-shadow: 0 0 0 2px rgba(241, 183, 93, 0.2);
+}
+
 .session-item.session-status-done .session-dot {
   background: rgba(109, 214, 153, 0.95);
   box-shadow: 0 0 0 2px rgba(109, 214, 153, 0.2);
