@@ -51,3 +51,21 @@ export const parseJobEvent = (value: unknown): JobEvent =>
 
 export const isJobEvent = (value: unknown): value is JobEvent =>
   jobEventSchema.safeParse(value).success;
+
+const TERMINAL_STATUS_VALUES = [
+  "DONE",
+  "COMPLETED",
+  "FAILED",
+  "ERROR",
+  "CANCELED",
+  "CANCELLED",
+];
+
+export const TERMINAL_JOB_STATUSES = new Set(TERMINAL_STATUS_VALUES);
+
+export const isTerminalJobStatus = (status?: string): boolean => {
+  if (!status) {
+    return false;
+  }
+  return TERMINAL_JOB_STATUSES.has(status.toUpperCase());
+};

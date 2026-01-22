@@ -1,21 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
-
 import { listRecentWorks, onRecentWorksUpdate } from "../lib/storage";
 import type { RecentWork } from "../lib/storage";
+import { useStorageList } from "./useStorageList";
 
 type RecentWorksResult = {
   items: RecentWork[];
   refresh: () => void;
 };
 
-export const useRecentWorks = (): RecentWorksResult => {
-  const [items, setItems] = useState<RecentWork[]>(() => listRecentWorks());
-
-  const refresh = useCallback(() => {
-    setItems(listRecentWorks());
-  }, []);
-
-  useEffect(() => onRecentWorksUpdate(refresh), [refresh]);
-
-  return { items, refresh };
-};
+export const useRecentWorks = (): RecentWorksResult =>
+  useStorageList<RecentWork>(listRecentWorks, onRecentWorksUpdate);

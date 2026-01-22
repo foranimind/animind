@@ -9,9 +9,16 @@ import sys
 import time
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from .base import AdapterResult, BaseAdapter, ProgressReporter, build_asset_ref, build_error
+from .base import (
+    AdapterResult,
+    BaseAdapter,
+    ProgressReporter,
+    build_asset_ref,
+    build_error,
+    run_subprocess,
+)
 from ..config.runtime import get_runtime_paths
 from ..uir.validate import validate_uir
 from ..utils.wsl import build_wsl_command, should_use_wsl, to_wsl_path, wsl_distro
@@ -191,6 +198,7 @@ class AnimationGPTAdapter(BaseAdapter):
                 env=run_env,
                 log_handle=log_handle,
                 timeout_s=timeout_s,
+                cancel_check=reporter.is_canceled,
             )
             if demo_result.timed_out:
                 return _error_result(
@@ -553,17 +561,16 @@ def _run_subprocess(
     env: Dict[str, str],
     log_handle: Any,
     timeout_s: Optional[float],
+    cancel_check: Optional[Callable[[], bool]] = None,
 ) -> _SubprocessResult:
     try:
-        completed = subprocess.run(
+        completed = run_subprocess(
             cmd,
-            cwd=str(cwd) if cwd is not None else None,
+            cwd=cwd,
             env=env,
-            stdout=log_handle,
-            stderr=log_handle,
-            text=True,
-            timeout=timeout_s,
-            check=False,
+            timeout_s=timeout_s,
+            log_handle=log_handle,
+            cancel_check=cancel_check,
         )
     except subprocess.TimeoutExpired:
         _log_line(log_handle, "[timeout] AnimationGPT demo timed out")

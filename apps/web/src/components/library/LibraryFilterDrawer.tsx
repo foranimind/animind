@@ -1,6 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 
 import { LibraryFilters, type FilterOption } from "./LibraryFilters";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { useDismissable } from "../../hooks/useDismissable";
 
 type LibraryFilterDrawerProps = {
   open: boolean;
@@ -33,35 +35,21 @@ export const LibraryFilterDrawer = ({
 }: LibraryFilterDrawerProps) => {
   const panelRef = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
-    if (!open) {
-      return;
+  const shouldDismiss = useCallback((event: MouseEvent | KeyboardEvent) => {
+    if ("key" in event) {
+      return true;
     }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    const handlePointer = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (panelRef.current && target && panelRef.current.contains(target)) {
-        return;
-      }
-      if (target?.closest?.("[data-filter-trigger='library-filters']")) {
-        return;
-      }
-      onClose();
-    };
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("mousedown", handlePointer);
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("mousedown", handlePointer);
-    };
-  }, [open, onClose]);
+    const target = event.target as HTMLElement | null;
+    return !target?.closest?.("[data-filter-trigger='library-filters']");
+  }, []);
+
+  useDismissable({
+    enabled: open,
+    refs: panelRef,
+    onDismiss: onClose,
+    shouldDismiss,
+  });
+  useBodyScrollLock(open);
 
   return (
     <div

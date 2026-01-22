@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -13,6 +12,7 @@ from .base import (
     ProgressReporter,
     build_asset_ref,
     build_error,
+    run_subprocess,
 )
 from ..uir.validate import validate_uir
 from ..utils.wsl import build_wsl_command, should_use_wsl, to_wsl_path, wsl_distro
@@ -146,13 +146,11 @@ class Diffusion360Adapter(BaseAdapter):
             with log_path.open("a", encoding="utf-8") as log_handle:
                 log_handle.write("[cmd] " + " ".join(cmd) + "\n")
                 log_handle.flush()
-                result = subprocess.run(
+                result = run_subprocess(
                     cmd,
-                    stdout=log_handle,
-                    stderr=log_handle,
-                    text=True,
                     env=run_env,
-                    check=False,
+                    log_handle=log_handle,
+                    cancel_check=reporter.is_canceled,
                 )
         except OSError as exc:
             return _error_result(

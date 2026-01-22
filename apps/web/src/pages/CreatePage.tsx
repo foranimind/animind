@@ -5,8 +5,13 @@ import { InspectorProgressPanel } from "../components/inspector/InspectorProgres
 import { InspectorResultsPanel } from "../components/inspector/InspectorResultsPanel";
 import type { SelectOption } from "../components/ui/SelectMenu";
 import { useJobRunner } from "../hooks/useJobRunner";
-import { fetchManifest, fetchPreviewConfig, getAssetUrl } from "../lib/api";
+import { useResource } from "../hooks/useAsync";
+import { useDismissable } from "../hooks/useDismissable";
+import { cancelJob, fetchManifest, fetchPreviewConfig, getAssetUrl } from "../lib/api";
+import { toErrorMessage } from "../lib/errors";
+import { getManifestAssetUris, getManifestSummary } from "../lib/manifestAssets";
 import { createNewSession } from "../lib/sessionActions";
+import { resolveJobStageLabel } from "../lib/status";
 import {
   DEFAULT_ACTIVE_TAB,
   DEFAULT_ADVANCED_SETTINGS,
@@ -32,8 +37,6 @@ import {
   type SessionDetail,
   type SessionStatus,
 } from "../lib/storage";
-import type { Manifest } from "../types/manifest";
-import type { PreviewConfig } from "../types/previewConfig";
 import type {
   AssetItem,
   ChatMessage,
@@ -58,25 +61,6 @@ const EXPORT_SELECT_OPTIONS: SelectOption[] = EXPORT_PRESETS.map((preset) => ({
   value: preset.value,
   label: preset.label,
 }));
-
-const STAGE_LABELS: Record<string, string> = {
-  QUEUED: "排队中",
-  PLANNING: "规划",
-  RUNNING_MOTION: "动作",
-  RUNNING_SCENE: "场景",
-  RUNNING_MUSIC: "音乐",
-  COMPOSING_PREVIEW: "预览合成",
-  EXPORTING_VIDEO: "导出",
-  DONE: "完成",
-  FAILED: "失败",
-  CANCELED: "已取消",
-  ERROR: "错误",
-};
-
-const resolveStageLabel = (stage?: string, status?: string) => {
-  const key = (stage ?? status ?? "").toUpperCase();
-  return STAGE_LABELS[key] ?? stage ?? status ?? "准备中";
-};
 
 const INSPECTOR_STEPS = [
   { id: "options", label: "参数" },
@@ -119,6 +103,9 @@ const mapJobStatusToSessionStatus = (
   if (normalized === "FAILED" || normalized === "ERROR") {
     return "error";
   }
+  if (normalized === "CANCELED" || normalized === "CANCELLED") {
+    return "canceled";
+  }
   return "running";
 };
 
@@ -136,26 +123,25 @@ export const CreatePage = () => {
   const [exportPreset, setExportPreset] = useState(DEFAULT_EXPORT_PRESET);
   const [activeTab, setActiveTab] = useState<InspectorTab>(DEFAULT_ACTIVE_TAB);
   const [toolMessageId, setToolMessageId] = useState<string | null>(null);
-  const [manifest, setManifest] = useState<Manifest | null>(null);
-  const [previewConfig, setPreviewConfig] = useState<PreviewConfig | null>(null);
-  const [previewConfigMissing, setPreviewConfigMissing] = useState(false);
-  const [assetError, setAssetError] = useState<string | null>(null);
-  const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionCreatedAt, setSessionCreatedAt] = useState<string>("");
-  const assetsJobRef = useRef<string | null>(null);
   const chatThreadRef = useRef<HTMLUListElement | null>(null);
   const chatThreadWrapRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const chatInputBoxRef = useRef<HTMLDivElement | null>(null);
   const advancedToggleRef = useRef<HTMLButtonElement | null>(null);
   const advancedPanelRef = useRef<HTMLDivElement | null>(null);
+  const advancedDismissRefs = useMemo(
+    () => [advancedPanelRef, advancedToggleRef],
+    [advancedPanelRef, advancedToggleRef]
+  );
   const recentSaveRef = useRef<string>("");
   const sessionInitRef = useRef(false);
   const lastSessionStatusRef = useRef<string | null>(null);
   const sessionJobIdRef = useRef<string | null>(null);
   const lastJobIdRef = useRef<string | null>(null);
   const sessionSwitchRef = useRef(false);
+  const [isCanceling, setIsCanceling] = useState(false);
 
   const latestPrompt = useMemo(() => {
     const match = [...messages].reverse().find((message) => message.role === "user");
@@ -316,12 +302,6 @@ export const CreatePage = () => {
     setExportPreset(detail.options.exportPreset);
     setPendingPrompt(null);
     setToolMessageId(null);
-    setManifest(null);
-    setPreviewConfig(null);
-    setPreviewConfigMissing(false);
-    setAssetError(null);
-    setIsLoadingAssets(false);
-    assetsJobRef.current = null;
   }, []);
 
   const loadSessionById = useCallback(
@@ -345,7 +325,12 @@ export const CreatePage = () => {
         if (detail) {
           touchSession(targetId);
           applySessionDetail(detail);
-          if (detail.jobId && detail.status !== "done" && detail.status !== "error") {
+          if (
+            detail.jobId &&
+            detail.status !== "done" &&
+            detail.status !== "error" &&
+            detail.status !== "canceled"
+          ) {
             subscribeExistingJob(detail.jobId);
           }
           return;
@@ -359,11 +344,9 @@ export const CreatePage = () => {
     [
       applySessionDetail,
       buildSessionDetail,
-      createNewSession,
       resetJobSubscription,
       sessionId,
       subscribeExistingJob,
-      touchSession,
     ]
   );
 
@@ -375,25 +358,11 @@ export const CreatePage = () => {
     loadSessionById(getActiveSessionId());
   }, [loadSessionById]);
 
-  useEffect(() => {
-    if (!advancedOpen) {
-      return;
-    }
-    const handlePointer = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (
-        (advancedPanelRef.current && advancedPanelRef.current.contains(target)) ||
-        (advancedToggleRef.current && advancedToggleRef.current.contains(target))
-      ) {
-        return;
-      }
-      setAdvancedOpen(false);
-    };
-    document.addEventListener("mousedown", handlePointer);
-    return () => {
-      document.removeEventListener("mousedown", handlePointer);
-    };
-  }, [advancedOpen]);
+  useDismissable({
+    enabled: advancedOpen,
+    refs: advancedDismissRefs,
+    onDismiss: () => setAdvancedOpen(false),
+  });
 
   useEffect(() => {
     const textarea = inputRef.current;
@@ -482,15 +451,22 @@ export const CreatePage = () => {
       ? Math.max(0, Math.min(100, Math.round(jobStatus.progress)))
       : 0;
   const progressLabel = typeof jobStatus?.progress === "number" ? `${progressValue}%` : "--";
-  const progressStage = resolveStageLabel(jobStatus?.stage, jobStatus?.status);
-  const logLines =
-    jobStatus?.logs_tail && jobStatus.logs_tail.length > 0
+  const progressStage = resolveJobStageLabel(jobStatus?.stage, jobStatus?.status);
+  const queuePosition = jobStatus?.queue_position;
+  const normalizedJobStatus = jobStatus?.status?.toUpperCase() ?? "";
+  const isJobCanceled = normalizedJobStatus === "CANCELED" || normalizedJobStatus === "CANCELLED";
+  const canceledHint = "已取消，可重新生成";
+  const logLines = isJobCanceled
+    ? [
+        jobStatus?.message && jobStatus.message !== "canceled"
+          ? jobStatus.message
+          : canceledHint,
+      ]
+    : jobStatus?.logs_tail && jobStatus.logs_tail.length > 0
       ? jobStatus.logs_tail.slice(-3)
       : jobStatus?.message
         ? [jobStatus.message]
         : ["等待日志输出..."];
-  const queuePosition = jobStatus?.queue_position;
-  const normalizedJobStatus = jobStatus?.status?.toUpperCase() ?? "";
   const queueLabel =
     queuePosition !== undefined
       ? `#${queuePosition}`
@@ -499,7 +475,47 @@ export const CreatePage = () => {
         : "--";
   const isJobDone = normalizedJobStatus === "DONE" || normalizedJobStatus === "COMPLETED";
   const isJobActive =
-    !!jobStatus && !["DONE", "COMPLETED", "FAILED", "ERROR"].includes(normalizedJobStatus);
+    !!jobStatus &&
+    !["DONE", "COMPLETED", "FAILED", "ERROR", "CANCELED", "CANCELLED"].includes(
+      normalizedJobStatus
+    );
+  const showCancel = isJobActive || isCanceling;
+
+  const assetJobId = isJobDone ? jobId ?? null : null;
+  const mapAssetError = useCallback(
+    (error: unknown) => toErrorMessage(error, "资源加载失败"),
+    []
+  );
+  const loadManifest = useCallback(
+    () => fetchManifest(assetJobId ?? ""),
+    [assetJobId]
+  );
+  const loadPreviewConfig = useCallback(
+    () => fetchPreviewConfig(assetJobId ?? ""),
+    [assetJobId]
+  );
+  const manifestState = useResource(loadManifest, {
+    enabled: Boolean(assetJobId),
+    mapError: mapAssetError,
+  });
+  const previewConfigState = useResource(loadPreviewConfig, {
+    enabled: Boolean(assetJobId),
+    mapError: mapAssetError,
+  });
+  const manifest =
+    manifestState.status === "ready" ? (manifestState.data ?? null) : null;
+  const previewConfig =
+    previewConfigState.status === "ready" ? (previewConfigState.data ?? null) : null;
+  const previewConfigMissing =
+    previewConfigState.status === "error" && previewConfigState.notFound === true;
+  const assetError =
+    previewConfigState.status === "error" && !previewConfigState.notFound
+      ? previewConfigState.error ?? "资源加载失败"
+      : manifestState.status === "error" && !manifestState.notFound
+        ? manifestState.error ?? "资源加载失败"
+        : null;
+  const isLoadingAssets =
+    manifestState.status === "loading" || previewConfigState.status === "loading";
 
   const assetItems = useMemo(() => {
     const items: AssetItem[] = [];
@@ -516,12 +532,12 @@ export const CreatePage = () => {
       items.push({ id: `${kind}-${items.length}`, label, href, kind });
     };
 
-    const outputs = manifest?.outputs;
-    addItem("场景全景 PNG", outputs?.scene?.panorama?.uri, "png");
-    addItem("动作 BVH", outputs?.motion?.bvh?.uri, "bvh");
-    addItem("配乐 WAV", outputs?.music?.wav?.uri, "wav");
-    addItem("导出 MP4", outputs?.export?.mp4?.uri, "mp4");
-    addItem("导出 ZIP", outputs?.export?.zip?.uri ?? undefined, "zip");
+    const manifestAssets = getManifestAssetUris(manifest);
+    addItem("场景全景 PNG", manifestAssets.scenePanorama, "png");
+    addItem("动作 BVH", manifestAssets.motionBvh, "bvh");
+    addItem("配乐 WAV", manifestAssets.musicWav, "wav");
+    addItem("导出 MP4", manifestAssets.exportMp4, "mp4");
+    addItem("导出 ZIP", manifestAssets.exportZip, "zip");
 
     if (jobStatus) {
       addItem("预览 MP4", jobStatus.preview_url, "mp4");
@@ -570,6 +586,11 @@ export const CreatePage = () => {
     if (normalizedStatus === "ERROR" || normalizedStatus === "FAILED") {
       return `生成失败：${jobStatus.message ?? "未知错误"}`;
     }
+    if (normalizedStatus === "CANCELED" || normalizedStatus === "CANCELLED") {
+      return jobStatus.message && jobStatus.message !== "canceled"
+        ? `已取消：${jobStatus.message}`
+        : canceledHint;
+    }
     const toolLogLines =
       jobStatus.logs_tail && jobStatus.logs_tail.length > 0
         ? jobStatus.logs_tail.slice(-3)
@@ -578,7 +599,7 @@ export const CreatePage = () => {
           : [];
     const logSummary = toolLogLines.length > 0 ? `\n${toolLogLines.join("\n")}` : "";
     return `生成中 ${progressLabel} · ${progressStage}${logSummary}`;
-  }, [jobError, jobId, jobStatus, progressLabel, progressStage, toolMessageId]);
+  }, [canceledHint, jobError, jobId, jobStatus, progressLabel, progressStage, toolMessageId]);
 
   const handleSend = () => {
     const trimmed = draft.trim();
@@ -629,7 +650,7 @@ export const CreatePage = () => {
       : buildSessionDetail({ jobId, status, updatedAt: now });
     saveSessionDetail(detail);
     sessionJobIdRef.current = jobId;
-  }, [jobId, sessionId]);
+  }, [buildSessionDetail, jobError, jobId, jobStatus?.status, sessionId]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -650,7 +671,7 @@ export const CreatePage = () => {
       status: mapJobStatusToSessionStatus(statusKey, jobError),
       updatedAt: new Date().toISOString(),
     });
-  }, [jobError, jobStatus?.status, sessionId]);
+  }, [jobError, jobId, jobStatus?.status, sessionId]);
 
   useEffect(() => {
     if (!toolMessageId || !toolMessageContent) {
@@ -674,66 +695,6 @@ export const CreatePage = () => {
     }
   }, [jobStatus]);
 
-  useEffect(() => {
-    if (!jobId || !isJobDone) {
-      return;
-    }
-    if (assetsJobRef.current === jobId) {
-      return;
-    }
-    assetsJobRef.current = jobId;
-    setManifest(null);
-    setPreviewConfig(null);
-    setPreviewConfigMissing(false);
-    setAssetError(null);
-    setIsLoadingAssets(true);
-
-    let cancelled = false;
-    const loadAssets = async () => {
-      const loadError = (error: unknown) =>
-        error instanceof Error ? error.message : "资源加载失败";
-
-      try {
-        const data = await fetchManifest(jobId);
-        if (!cancelled) {
-          setManifest(data);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          const status = (error as { status?: number }).status;
-          if (status && status !== 404) {
-            setAssetError(loadError(error));
-          }
-        }
-      }
-
-      try {
-        const config = await fetchPreviewConfig(jobId);
-        if (!cancelled) {
-          setPreviewConfig(config);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          const status = (error as { status?: number }).status;
-          if (status === 404) {
-            setPreviewConfigMissing(true);
-          } else {
-            setAssetError(loadError(error));
-          }
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingAssets(false);
-        }
-      }
-    };
-
-    loadAssets();
-    return () => {
-      cancelled = true;
-    };
-  }, [isJobDone, jobId]);
-
   const handleStartGeneration = useCallback(async () => {
     if (!hasPrompt || isStarting || isJobActive) {
       return;
@@ -746,12 +707,6 @@ export const CreatePage = () => {
     setToolMessageId(toolId);
     setPendingPrompt(null);
     setInspectorStage("running");
-    setManifest(null);
-    setPreviewConfig(null);
-    setPreviewConfigMissing(false);
-    setAssetError(null);
-    setIsLoadingAssets(false);
-    assetsJobRef.current = null;
     try {
       await startJob();
     } catch (error) {
@@ -764,6 +719,31 @@ export const CreatePage = () => {
       setInspectorStage(DEFAULT_INSPECTOR_STAGE);
     }
   }, [hasPrompt, isJobActive, isStarting, startJob]);
+
+  const handleCancelGeneration = useCallback(async () => {
+    if (!jobId || !isJobActive || isCanceling) {
+      return;
+    }
+    setIsCanceling(true);
+    try {
+      await cancelJob(jobId, "用户取消");
+    } finally {
+      setIsCanceling(false);
+    }
+  }, [isCanceling, isJobActive, jobId]);
+
+  const handleComplete = () => {
+    setInspectorStage("complete");
+    setActiveTab("preview");
+  };
+
+  const handleProgressAction = useCallback(() => {
+    if (isJobCanceled) {
+      setInspectorStage(DEFAULT_INSPECTOR_STAGE);
+      return;
+    }
+    handleComplete();
+  }, [handleComplete, isJobCanceled]);
 
   useEffect(() => {
     if (!pendingPrompt) {
@@ -840,10 +820,10 @@ export const CreatePage = () => {
     if (!manifest && !previewConfig) {
       return;
     }
-    const title = (manifest?.inputs?.raw_prompt ?? latestPrompt).trim();
-    const previewUri =
-      manifest?.outputs?.scene?.panorama?.uri ?? previewConfig?.scene?.panorama_uri;
-    const createdAt = manifest?.created_at ?? new Date().toISOString();
+    const summary = getManifestSummary(manifest);
+    const title = (summary.title ?? latestPrompt).trim();
+    const previewUri = summary.thumbnailUri ?? previewConfig?.scene?.panorama_uri;
+    const createdAt = summary.createdAt ?? new Date().toISOString();
     const signature = JSON.stringify({
       jobId,
       title,
@@ -874,27 +854,22 @@ export const CreatePage = () => {
     }
   }, [isJobDone, jobId, latestPrompt, manifest, previewConfig, sessionId]);
 
-  const handleComplete = () => {
-    setInspectorStage("complete");
-    setActiveTab("preview");
-  };
-
   return (
     <div className="page create-page">
       <div className="create-shell">
-      <CreateChatPanel
-        messages={messages}
-        templateSnippets={TEMPLATE_SNIPPETS}
-        draft={draft}
-        canSend={canSend}
-        onDraftChange={(value) => setDraft(value)}
-        onSend={handleSend}
-        onInsertTemplate={insertTemplate}
-        chatThreadRef={chatThreadRef}
-        chatThreadWrapRef={chatThreadWrapRef}
-        chatInputBoxRef={chatInputBoxRef}
-        inputRef={inputRef}
-      />
+        <CreateChatPanel
+          messages={messages}
+          templateSnippets={TEMPLATE_SNIPPETS}
+          draft={draft}
+          canSend={canSend}
+          onDraftChange={(value) => setDraft(value)}
+          onSend={handleSend}
+          onInsertTemplate={insertTemplate}
+          chatThreadRef={chatThreadRef}
+          chatThreadWrapRef={chatThreadWrapRef}
+          chatInputBoxRef={chatInputBoxRef}
+          inputRef={inputRef}
+        />
 
         <aside className="create-inspector">
           <div className="inspector-card">
@@ -957,7 +932,11 @@ export const CreatePage = () => {
                   progressValue={progressValue}
                   queueLabel={queueLabel}
                   logLines={logLines}
-                  onComplete={handleComplete}
+                  actionLabel={isJobCanceled ? "重新生成" : "查看结果"}
+                  onComplete={handleProgressAction}
+                  onCancel={showCancel ? handleCancelGeneration : undefined}
+                  isCanceling={isCanceling}
+                  canCancel={isJobActive}
                 />
               )}
 

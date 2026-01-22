@@ -92,19 +92,23 @@ class JobStore:
             job = self._jobs.get(job_id)
             if not job:
                 return None
+            if "status" in fields:
+                value = fields.get("status")
+                if isinstance(value, str):
+                    value = JobStatus(value)
+                if not isinstance(value, JobStatus):
+                    raise ValueError(f"Invalid status: {value!r}")
+                if job.status in _TERMINAL_STATUSES and job.status != value:
+                    return job
+                job.status = value
+                if "stage" not in fields:
+                    job.stage = value.value
+                if job.started_at is None and value != JobStatus.QUEUED:
+                    job.started_at = _now()
+                if value in _TERMINAL_STATUSES and job.ended_at is None:
+                    job.ended_at = _now()
             for key, value in fields.items():
                 if key == "status":
-                    if isinstance(value, str):
-                        value = JobStatus(value)
-                    if not isinstance(value, JobStatus):
-                        raise ValueError(f"Invalid status: {value!r}")
-                    job.status = value
-                    if "stage" not in fields:
-                        job.stage = value.value
-                    if job.started_at is None and value != JobStatus.QUEUED:
-                        job.started_at = _now()
-                    if value in _TERMINAL_STATUSES and job.ended_at is None:
-                        job.ended_at = _now()
                     continue
                 if key == "progress" and isinstance(value, (int, float)):
                     value = max(0.0, min(1.0, float(value)))
@@ -140,7 +144,20 @@ class JobStore:
             return job
 
     def cancel_job(self, job_id: str, message: str = "canceled") -> Optional[Job]:
-        return self.update_job(job_id, status=JobStatus.CANCELED, message=message)
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if not job:
+                return None
+            if job.status in _TERMINAL_STATUSES:
+                return job
+            job.status = JobStatus.CANCELED
+            job.stage = JobStatus.CANCELED.value
+            job.message = message
+            if job.started_at is None:
+                job.started_at = _now()
+            if job.ended_at is None:
+                job.ended_at = _now()
+            return job
 
 
 JOB_STORE = JobStore()

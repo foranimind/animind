@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import subprocess
 import time
 import wave
 from pathlib import Path
@@ -15,6 +14,7 @@ from .base import (
     ProgressReporter,
     build_asset_ref,
     build_error,
+    run_subprocess,
 )
 from ..uir.validate import validate_uir
 
@@ -105,13 +105,11 @@ class MusicGPTCliAdapter(BaseAdapter):
                 reporter.stage("running", 0.5, "running MusicGPT")
                 log_handle.write("[cmd] " + " ".join(cmd) + "\n")
                 log_handle.flush()
-                result = subprocess.run(
+                result = run_subprocess(
                     cmd,
-                    stdout=log_handle,
-                    stderr=log_handle,
-                    text=True,
                     env=env,
-                    check=False,
+                    log_handle=log_handle,
+                    cancel_check=reporter.is_canceled,
                 )
         except OSError as exc:
             return _error_result(

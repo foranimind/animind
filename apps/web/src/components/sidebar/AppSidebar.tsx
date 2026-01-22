@@ -1,6 +1,13 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
+import { useDismissable } from "../../hooks/useDismissable";
 import { useSessions } from "../../hooks/useSessions";
 import { createNewSession } from "../../lib/sessionActions";
 import {
@@ -31,22 +38,11 @@ export const AppSidebar = () => {
     return localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1";
   });
 
-  useEffect(() => {
-    if (!menuOpenId) {
-      return;
-    }
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (menuRef.current && menuRef.current.contains(target)) {
-        return;
-      }
-      setMenuOpenId(null);
-    };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-    };
-  }, [menuOpenId]);
+  useDismissable({
+    enabled: Boolean(menuOpenId),
+    refs: menuRef,
+    onDismiss: () => setMenuOpenId(null),
+  });
 
   useEffect(() => {
     if (activeSessionId) {
@@ -59,7 +55,7 @@ export const AppSidebar = () => {
       return;
     }
     createNewSession();
-  }, [activeSessionId, createNewSession, items, setActiveSessionId, touchSession]);
+  }, [activeSessionId, items]);
 
   const handleNewProject = () => {
     const emptySessions = listEmptySessions();
@@ -83,6 +79,24 @@ export const AppSidebar = () => {
     navigate("/");
   };
 
+  const resolveNextSessionId = (targetId: string) => {
+    const index = items.findIndex((session) => session.id === targetId);
+    if (index < 0) {
+      return null;
+    }
+    return items[index + 1]?.id ?? items[index - 1]?.id ?? null;
+  };
+
+  const handleRemoveSession = (sessionId: string) => {
+    if (activeSessionId === sessionId) {
+      const nextId = resolveNextSessionId(sessionId);
+      if (nextId) {
+        setActiveSessionId(nextId);
+      }
+    }
+    removeSession(sessionId);
+  };
+
   const handleSessionKeyDown = (sessionId: string, event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -90,8 +104,14 @@ export const AppSidebar = () => {
     }
   };
 
-  const handleOpenDetail = (jobId: string, event: MouseEvent<HTMLButtonElement>) => {
+  const handleOpenDetail = (
+    jobId: string | undefined,
+    event: ReactMouseEvent<HTMLButtonElement>
+  ) => {
     event.stopPropagation();
+    if (!jobId) {
+      return;
+    }
     navigate(`/works/${jobId}`);
   };
 
@@ -221,6 +241,8 @@ export const AppSidebar = () => {
               const statusClass =
                 session.status === "error"
                   ? "session-status-error"
+                  : session.status === "canceled"
+                    ? "session-status-canceled"
                   : session.status === "running" || session.status === "queued"
                     ? "session-status-running"
                     : session.status === "done"
@@ -299,11 +321,6 @@ export const AppSidebar = () => {
                         menuRef.current = node;
                       }
                     }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        setMenuOpenId(null);
-                      }
-                    }}
                   >
                     {session.status === "done" && session.jobId ? (
                       <button
@@ -372,7 +389,7 @@ export const AppSidebar = () => {
                           event.preventDefault();
                           event.stopPropagation();
                           setMenuOpenId(null);
-                          removeSession(session.id);
+                          handleRemoveSession(session.id);
                         }}
                       >
                         删除

@@ -5,12 +5,15 @@ from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import StreamingResponse
 
 from ..scheduler.events import EVENT_BUS
+from ..scheduler.models import JobStatus
+from ..scheduler.reporter import ProgressReporter
 from ..scheduler.store import JOB_STORE
 from ..scheduler.worker import enqueue_job
 from ..uir.builder import build_uir_from_prompt
 
 router = APIRouter()
 _LOGS_TAIL_LIMIT = 8
+_TERMINAL_STATUSES = {JobStatus.DONE, JobStatus.FAILED, JobStatus.CANCELED}
 
 
 def _progress_percent(value: Any) -> float:
@@ -92,6 +95,35 @@ async def create_job(payload: Optional[Dict[str, Any]] = Body(default=None)) -> 
 
 @router.get("/{job_id}")
 async def get_job(job_id: str) -> Dict[str, Any]:
+    job = JOB_STORE.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    return _job_to_dict(job)
+
+
+@router.post("/{job_id}/cancel")
+async def cancel_job(
+    job_id: str, payload: Optional[Dict[str, Any]] = Body(default=None)
+) -> Dict[str, Any]:
+    if payload is not None and not isinstance(payload, dict):
+        raise HTTPException(status_code=422, detail="payload must be a JSON object")
+    message = "canceled"
+    if isinstance(payload, dict):
+        raw_message = payload.get("message")
+        if isinstance(raw_message, str) and raw_message.strip():
+            message = raw_message.strip()
+    job = JOB_STORE.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    if job.status in _TERMINAL_STATUSES:
+        return _job_to_dict(job)
+    job = JOB_STORE.cancel_job(job_id, message=message)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    if job.status != JobStatus.CANCELED:
+        return _job_to_dict(job)
+    reporter = ProgressReporter(job_id, JOB_STORE, EVENT_BUS)
+    await reporter.status(JobStatus.CANCELED, job.progress, message)
     job = JOB_STORE.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")

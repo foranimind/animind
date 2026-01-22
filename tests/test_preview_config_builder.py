@@ -15,11 +15,16 @@ from services.orchestrator.src.storage.job_fs import ensure_job_dirs
 
 
 class _DummyReporter:
+    cancel_token = None
+
     def stage(self, name: str, progress: float, message: str = "", extra=None) -> None:
         return None
 
     def log(self, line: str) -> None:
         return None
+
+    def is_canceled(self) -> bool:
+        return False
 
 
 def _base_uir(job_id: str) -> dict:
