@@ -79,6 +79,24 @@ export const AppSidebar = () => {
     navigate("/");
   };
 
+  const resolveNextSessionId = (targetId: string) => {
+    const index = items.findIndex((session) => session.id === targetId);
+    if (index < 0) {
+      return null;
+    }
+    return items[index + 1]?.id ?? items[index - 1]?.id ?? null;
+  };
+
+  const handleRemoveSession = (sessionId: string) => {
+    if (activeSessionId === sessionId) {
+      const nextId = resolveNextSessionId(sessionId);
+      if (nextId) {
+        setActiveSessionId(nextId);
+      }
+    }
+    removeSession(sessionId);
+  };
+
   const handleSessionKeyDown = (sessionId: string, event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -371,7 +389,7 @@ export const AppSidebar = () => {
                           event.preventDefault();
                           event.stopPropagation();
                           setMenuOpenId(null);
-                          removeSession(session.id);
+                          handleRemoveSession(session.id);
                         }}
                       >
                         删除
