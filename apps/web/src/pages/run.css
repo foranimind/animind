@@ -209,10 +209,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .run-stage-main {
-    order: -1;
-  }
-
   .run-preview-pane .surface-panel-body {
     min-height: 320px;
   }

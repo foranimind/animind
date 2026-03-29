@@ -83,6 +83,7 @@
 
 .status-pill {
   background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
 }
 
 .status-pill-dot {
@@ -91,4 +92,35 @@
   border-radius: 999px;
   background: currentColor;
   opacity: 0.8;
+}
+
+.status-pill-idle,
+.status-pill-unknown {
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+}
+
+.status-pill-loading {
+  background: rgba(185, 180, 255, 0.16);
+  border-color: rgba(185, 180, 255, 0.28);
+  color: #ddd9ff;
+}
+
+.status-pill-ready {
+  background: rgba(74, 222, 128, 0.14);
+  border-color: rgba(74, 222, 128, 0.24);
+  color: #bbf7d0;
+}
+
+.status-pill-warning {
+  background: rgba(232, 194, 122, 0.16);
+  border-color: rgba(232, 194, 122, 0.28);
+  color: #f5deb0;
+}
+
+.status-pill-error {
+  background: rgba(248, 113, 113, 0.14);
+  border-color: rgba(248, 113, 113, 0.24);
+  color: #fecaca;
 }
