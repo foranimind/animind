@@ -2,6 +2,108 @@
   gap: 18px;
 }
 
+.delivery-shell {
+  width: min(100%, 1280px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 24px;
+}
+
+.delivery-side-column {
+  display: grid;
+  gap: 16px;
+}
+
+.delivery-panel {
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.delivery-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+
+.delivery-panel-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.delivery-preview-fallback {
+  min-height: 220px;
+  border-radius: 18px;
+  border: 1px dashed rgba(88, 108, 146, 0.55);
+  background: rgba(12, 18, 28, 0.82);
+  color: var(--text-muted);
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  padding: 24px;
+}
+
+.delivery-preview-fallback strong {
+  color: var(--text);
+}
+
+.delivery-preview-fallback button {
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid rgba(52, 66, 86, 0.8);
+  background: rgba(18, 24, 36, 0.85);
+  color: #dce4f6;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.delivery-assets-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.delivery-asset-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(44, 58, 80, 0.9);
+  background: rgba(16, 22, 33, 0.82);
+  color: #e5e7eb;
+  text-decoration: none;
+  padding: 10px 12px;
+}
+
+.delivery-asset-link.disabled {
+  opacity: 0.45;
+}
+
+.delivery-export-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.secondary-button.export-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(52, 66, 86, 0.8);
+  background: rgba(18, 24, 36, 0.85);
+  color: #dce4f6;
+  padding: 10px 16px;
+  text-decoration: none;
+}
+
 .work-detail-header {
   display: flex;
   align-items: center;
@@ -464,6 +566,10 @@
 }
 
 @media (max-width: 900px) {
+  .delivery-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .work-detail-drawer-panel {
     top: auto;
     bottom: 0;
@@ -481,6 +587,10 @@
 }
 
 @media (max-width: 640px) {
+  .delivery-assets-grid {
+    grid-template-columns: 1fr;
+  }
+
   .work-detail-assets {
     grid-template-columns: 1fr;
   }

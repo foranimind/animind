@@ -1,7 +1,5 @@
-import { WorkDetailPage } from "./WorkDetailPage";
+import { DeliveryPage } from "./DeliveryPage";
 
-type DetailPageProps = {
-  jobId?: string;
-};
+type DetailPageProps = { jobId?: string };
 
-export const DetailPage = ({ jobId }: DetailPageProps) => <WorkDetailPage jobId={jobId} />;
+export const DetailPage = ({ jobId }: DetailPageProps) => <DeliveryPage jobId={jobId} />;
