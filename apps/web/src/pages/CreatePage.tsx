@@ -83,6 +83,15 @@ const TEMPLATE_SNIPPETS: TemplateSnippet[] = [
 
 const createMessageId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+const getLatestToolMessageId = (items: ChatMessage[]): string | null => {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (items[index].role === "tool") {
+      return items[index].id;
+    }
+  }
+  return null;
+};
+
 const mapJobStatusToSessionStatus = (
   status?: string,
   error?: string | null
@@ -480,6 +489,15 @@ export const CreatePage = () => {
       normalizedJobStatus
     );
   const showCancel = isJobActive || isCanceling;
+  const activeToolMessageId = useMemo(() => {
+    if (toolMessageId && messages.some((message) => message.id === toolMessageId)) {
+      return toolMessageId;
+    }
+    if (inspectorStage !== "running") {
+      return null;
+    }
+    return getLatestToolMessageId(messages);
+  }, [inspectorStage, messages, toolMessageId]);
 
   const assetJobId = isJobDone ? jobId ?? null : null;
   const mapAssetError = useCallback(
@@ -567,7 +585,7 @@ export const CreatePage = () => {
     assetItems.find((item) => item.kind === "mp4");
 
   const toolMessageContent = useMemo(() => {
-    if (!toolMessageId) {
+    if (!activeToolMessageId) {
       return "";
     }
     if (jobError) {
@@ -599,7 +617,7 @@ export const CreatePage = () => {
           : [];
     const logSummary = toolLogLines.length > 0 ? `\n${toolLogLines.join("\n")}` : "";
     return `生成中 ${progressLabel} · ${progressStage}${logSummary}`;
-  }, [canceledHint, jobError, jobId, jobStatus, progressLabel, progressStage, toolMessageId]);
+  }, [activeToolMessageId, canceledHint, jobError, jobId, jobStatus, progressLabel, progressStage]);
 
   const handleSend = () => {
     const trimmed = draft.trim();
@@ -674,15 +692,15 @@ export const CreatePage = () => {
   }, [jobError, jobId, jobStatus?.status, sessionId]);
 
   useEffect(() => {
-    if (!toolMessageId || !toolMessageContent) {
+    if (!activeToolMessageId || !toolMessageContent) {
       return;
     }
     setMessages((prev) =>
       prev.map((message) =>
-        message.id === toolMessageId ? { ...message, content: toolMessageContent } : message
+        message.id === activeToolMessageId ? { ...message, content: toolMessageContent } : message
       )
     );
-  }, [toolMessageContent, toolMessageId]);
+  }, [activeToolMessageId, toolMessageContent]);
 
   useEffect(() => {
     if (!jobStatus) {
@@ -732,10 +750,10 @@ export const CreatePage = () => {
     }
   }, [isCanceling, isJobActive, jobId]);
 
-  const handleComplete = () => {
+  const handleComplete = useCallback(() => {
     setInspectorStage("complete");
     setActiveTab("preview");
-  };
+  }, []);
 
   const handleProgressAction = useCallback(() => {
     if (isJobCanceled) {

@@ -165,3 +165,7 @@ runtime/
 
 # Binaries
 **/*.exe
+
+# AI
+.agents/
+.codex/
