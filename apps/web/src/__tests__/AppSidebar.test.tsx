@@ -134,6 +134,25 @@ describe("AppSidebar", () => {
     expect(screen.getByRole("button", { name: "Delivered scene" })).not.toHaveClass("active");
   });
 
+  it("keeps the studio rail landmark and collapse control available", () => {
+    const now = new Date().toISOString();
+    const detail = buildDefaultSessionDetail("sess-draft", now);
+    detail.lastPrompt = "Draft scene";
+
+    saveSessionDetail(detail);
+    setActiveSessionId(detail.id);
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("complementary", { name: "工作室导航" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "新建项目" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "收起侧栏" })).toBeInTheDocument();
+  });
+
   it("treats a delivery result route as part of the create workflow in the sidebar", () => {
     const now = new Date().toISOString();
     const draft = buildDefaultSessionDetail("sess-draft", now);

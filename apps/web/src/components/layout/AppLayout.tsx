@@ -4,10 +4,10 @@ import { AppSidebar } from "../sidebar/AppSidebar";
 import "./layout.css";
 
 export const AppLayout = () => (
-  <div className="app-shell">
+  <div className="app-frame">
     <AppSidebar />
-    <div className="app-main">
+    <main className="app-workspace" aria-label="Studio workspace">
       <Outlet />
-    </div>
+    </main>
   </div>
 );

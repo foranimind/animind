@@ -1,78 +1,88 @@
 .app-sidebar {
-  width: 240px;
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 18px 16px;
-  padding-bottom: 72px;
-  background: #0c1118;
-  border-right: 1px solid var(--border);
+  gap: 18px;
+  padding: 24px 18px 20px;
+  background:
+    linear-gradient(180deg, rgba(13, 18, 28, 0.96), rgba(10, 14, 22, 0.92)),
+    #0c1118;
+  border-right: 1px solid rgba(38, 50, 68, 0.9);
   position: sticky;
   top: 0;
   box-sizing: border-box;
   z-index: 80;
   overflow: visible;
-  transition: width var(--enter) var(--ease), padding var(--enter) var(--ease);
+  backdrop-filter: blur(20px);
+  transition: width var(--enter) var(--ease), padding var(--enter) var(--ease),
+    background var(--enter) var(--ease);
 }
 
 .app-sidebar.collapsed {
-  width: 72px;
-  padding: 16px 10px;
-  padding-bottom: 72px;
+  width: 84px;
+  padding: 22px 12px 18px;
 }
 
-.sidebar-top {
+.sidebar-rail-header {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .sidebar-user {
   display: flex;
   gap: 12px;
   align-items: center;
+  padding: 8px 10px;
+  border-radius: 16px;
+  background: rgba(17, 24, 36, 0.75);
+  border: 1px solid rgba(49, 64, 88, 0.72);
 }
 
 .sidebar-avatar {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
-  background: linear-gradient(140deg, #1f2a3a 0%, #121a26 70%);
-  border: 1px solid rgba(154, 176, 255, 0.25);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(154, 176, 255, 0.35), transparent 45%),
+    linear-gradient(140deg, #253248 0%, #131c29 70%);
+  border: 1px solid rgba(154, 176, 255, 0.32);
 }
 
 .sidebar-user-info {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 
 .sidebar-user-name {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
 }
 
 .sidebar-user-meta {
   font-size: 0.72rem;
-  color: var(--text-muted);
-  letter-spacing: 0.04em;
+  color: rgba(212, 218, 231, 0.68);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .sidebar-new {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  border-radius: 10px;
-  border: 1px solid rgba(90, 108, 146, 0.7);
-  background: rgba(20, 28, 40, 0.9);
+  gap: 8px;
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(196, 159, 93, 0.42);
+  background: linear-gradient(135deg, rgba(201, 163, 94, 0.22), rgba(43, 57, 84, 0.22));
   color: var(--text);
-  padding: 8px 10px;
-  font-size: 0.78rem;
+  padding: 10px 12px;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   transition: border-color var(--enter) var(--ease), box-shadow var(--enter) var(--ease),
-    transform var(--enter) var(--ease);
+    transform var(--enter) var(--ease), background var(--enter) var(--ease);
 }
 
 .sidebar-new-icon,
@@ -94,9 +104,9 @@
 }
 
 .sidebar-new:hover {
-  border-color: rgba(154, 176, 255, 0.7);
+  border-color: rgba(232, 194, 122, 0.72);
   transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(8, 14, 24, 0.25);
+  box-shadow: 0 10px 22px rgba(8, 14, 24, 0.3);
 }
 
 .sidebar-new:focus-visible {
@@ -110,23 +120,26 @@
 }
 
 .sidebar-link {
-  display: flex;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid transparent;
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(37, 48, 65, 0.9);
   color: var(--text);
   text-decoration: none;
-  background: transparent;
+  background: rgba(14, 20, 30, 0.55);
   transition: background-color var(--enter) var(--ease), border-color var(--enter) var(--ease),
     transform var(--enter) var(--ease), box-shadow var(--enter) var(--ease);
 }
 
 .sidebar-link.active {
-  background: rgba(26, 34, 48, 0.85);
-  border-color: rgba(88, 108, 146, 0.6);
-  box-shadow: inset 0 0 0 1px rgba(154, 176, 255, 0.12);
+  background: linear-gradient(135deg, rgba(30, 40, 58, 0.96), rgba(18, 24, 36, 0.96));
+  border-color: rgba(88, 108, 146, 0.7);
+  box-shadow:
+    inset 0 0 0 1px rgba(154, 176, 255, 0.14),
+    0 10px 22px rgba(5, 10, 20, 0.2);
 }
 
 .sidebar-link:hover {
@@ -141,19 +154,21 @@
   outline-offset: 2px;
 }
 
-.sidebar-list {
+.sidebar-session-region {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   flex: 1;
   min-height: 0;
+  padding-top: 4px;
 }
 
 .sidebar-list-header {
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: rgba(212, 218, 231, 0.62);
+  padding: 0 4px;
 }
 
 .sidebar-list-body {
@@ -171,7 +186,7 @@
 .sidebar-empty {
   font-size: 0.8rem;
   color: var(--text-muted);
-  padding: 6px 2px;
+  padding: 8px 4px;
 }
 
 .session-item {
@@ -179,21 +194,23 @@
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 11px 12px;
   min-width: 0;
-  border-radius: 12px;
-  border: 1px solid rgba(34, 44, 60, 0.85);
-  background: rgba(14, 20, 30, 0.75);
+  border-radius: 14px;
+  border: 1px solid rgba(34, 44, 60, 0.9);
+  background: linear-gradient(135deg, rgba(15, 22, 33, 0.82), rgba(12, 18, 28, 0.88));
   color: var(--text);
   cursor: pointer;
   text-align: left;
   transition: border-color var(--enter) var(--ease), transform var(--enter) var(--ease),
-    box-shadow var(--enter) var(--ease);
+    box-shadow var(--enter) var(--ease), background var(--enter) var(--ease);
 }
 
 .session-item.active {
   border-color: rgba(88, 108, 146, 0.7);
-  box-shadow: inset 0 0 0 1px rgba(154, 176, 255, 0.12);
+  box-shadow:
+    inset 0 0 0 1px rgba(154, 176, 255, 0.12),
+    0 10px 20px rgba(5, 10, 20, 0.18);
 }
 
 .session-item.menu-open {
@@ -233,6 +250,7 @@
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text);
+  line-height: 1.35;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -258,15 +276,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  color: rgba(154, 176, 255, 0.8);
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(232, 194, 122, 0.85);
+  box-shadow: 0 0 0 3px rgba(232, 194, 122, 0.14);
   flex: 0 0 auto;
-}
-
-.session-pin svg {
-  width: 14px;
-  height: 14px;
 }
 
 .session-actions {
@@ -374,20 +389,18 @@
   border: 1px solid rgba(60, 74, 94, 0.8);
   background: rgba(18, 24, 36, 0.9);
   color: var(--text);
-  width: 28px;
+  min-width: 44px;
   height: 28px;
+  padding: 0 10px;
   border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex: 0 0 auto;
+  font-size: 0.75rem;
+  font-weight: 600;
   transition: border-color var(--enter) var(--ease), transform var(--enter) var(--ease);
-}
-
-.session-open svg {
-  width: 14px;
-  height: 14px;
 }
 
 .session-open:hover {
@@ -401,10 +414,10 @@
 }
 
 .sidebar-footer {
-  position: fixed;
-  left: 16px;
-  bottom: 16px;
-  z-index: 1000;
+  display: flex;
+  justify-content: flex-start;
+  margin-top: auto;
+  padding-top: 10px;
 }
 
 .sidebar-collapse {
@@ -421,7 +434,6 @@
   transition: border-color var(--enter) var(--ease), transform var(--enter) var(--ease),
     box-shadow var(--enter) var(--ease);
   position: relative;
-  z-index: 1001;
 }
 
 .sidebar-collapse:hover {
@@ -493,12 +505,13 @@
   display: none;
 }
 
-.app-sidebar.collapsed .sidebar-top {
+.app-sidebar.collapsed .sidebar-rail-header {
   justify-items: center;
 }
 
 .app-sidebar.collapsed .sidebar-user {
   justify-content: center;
+  padding-inline: 8px;
 }
 
 .app-sidebar.collapsed .sidebar-new {
@@ -516,10 +529,14 @@
 
 .app-sidebar.collapsed .session-item {
   justify-content: center;
-  padding: 10px;
+  padding: 12px 10px;
 }
 
 .app-sidebar.collapsed .session-main {
+  justify-content: center;
+}
+
+.app-sidebar.collapsed .sidebar-footer {
   justify-content: center;
 }
 
@@ -528,7 +545,7 @@
   .app-sidebar.collapsed {
     position: static;
     width: 100%;
-    height: auto;
+    min-height: auto;
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
@@ -548,11 +565,11 @@
     display: block;
   }
 
-  .app-sidebar.collapsed .session-open {
+  .app-sidebar.collapsed .session-actions {
     display: inline-flex;
   }
 
-  .app-sidebar.collapsed .session-actions {
+  .app-sidebar.collapsed .session-open {
     display: inline-flex;
   }
 

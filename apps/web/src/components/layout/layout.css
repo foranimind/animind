@@ -1,4 +1,4 @@
-.app-shell {
+.app-frame {
   --bg: #0a0e14;
   --bg-soft: #0f141c;
   --surface: #101621;
@@ -24,20 +24,28 @@
   --range-thumb: rgba(154, 176, 255, 0.9);
   --range-thumb-border: rgba(12, 18, 28, 0.9);
   --range-thumb-shadow: 0 6px 12px rgba(5, 10, 20, 0.35);
-  display: flex;
   min-height: 100vh;
-  background: var(--bg);
+  display: grid;
+  grid-template-columns: minmax(84px, 280px) minmax(0, 1fr);
+  background:
+    radial-gradient(circle at top left, rgba(91, 78, 140, 0.14), transparent 34%),
+    radial-gradient(circle at top right, rgba(232, 194, 122, 0.08), transparent 30%),
+    var(--bg);
   color: var(--text);
   font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
 }
 
-.app-main {
-  flex: 1;
+.app-workspace {
   min-width: 0;
+  padding: 28px 32px;
 }
 
 @media (max-width: 900px) {
-  .app-shell {
-    flex-direction: column;
+  .app-frame {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-workspace {
+    padding: 20px 18px 28px;
   }
 }
