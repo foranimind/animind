@@ -29,6 +29,14 @@ vi.mock("../hooks/useWorkDetail", () => ({
 }));
 
 describe("DeliveryPage", () => {
+  it("exposes showcase stage landmarks and the video export action", () => {
+    render(<DeliveryPage jobId="job_done" />);
+
+    expect(screen.getByRole("region", { name: "成果舞台" })).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "交付操作" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "导出视频" })).toBeInTheDocument();
+  });
+
   it("keeps delivery assets visible even when preview config is missing", () => {
     render(<DeliveryPage jobId="job_done" />);
 

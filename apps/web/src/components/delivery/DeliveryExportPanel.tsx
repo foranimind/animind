@@ -2,6 +2,8 @@ import { getAssetUrl } from "../../lib/api";
 import { getManifestAssetUris } from "../../lib/manifestAssets";
 import type { LoadState } from "../../hooks/useAsync";
 import type { Manifest } from "../../types/manifest";
+import { ActionButton } from "../ui/ActionButton";
+import { SurfacePanel } from "../ui/SurfacePanel";
 
 type DeliveryExportPanelProps = {
   manifest: LoadState<Manifest>;
@@ -13,28 +15,36 @@ export const DeliveryExportPanel = ({ manifest }: DeliveryExportPanelProps) => {
   const exportZip = assets.exportZip;
 
   return (
-    <section className="delivery-panel delivery-export-panel">
-      <div className="delivery-panel-header">
-        <h2>导出</h2>
-      </div>
-
+    <SurfacePanel
+      className="delivery-panel delivery-export-panel"
+      header={
+        <div className="delivery-panel-heading">
+          <h2 className="delivery-panel-title">导出</h2>
+        </div>
+      }
+    >
       <div className="delivery-export-actions">
         {exportMp4 ? (
-          <a className="primary-button export-button" href={getAssetUrl(exportMp4)} download>
+          <ActionButton href={getAssetUrl(exportMp4)} download className="delivery-export-button">
             导出视频
-          </a>
+          </ActionButton>
         ) : (
-          <button type="button" className="primary-button export-button" disabled>
+          <ActionButton className="delivery-export-button" disabled>
             导出视频
-          </button>
+          </ActionButton>
         )}
 
         {exportZip ? (
-          <a className="secondary-button export-button" href={getAssetUrl(exportZip)} download>
+          <ActionButton
+            href={getAssetUrl(exportZip)}
+            download
+            variant="ghost"
+            className="delivery-export-button"
+          >
             下载 ZIP
-          </a>
+          </ActionButton>
         ) : null}
       </div>
-    </section>
+    </SurfacePanel>
   );
 };

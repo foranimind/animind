@@ -2,6 +2,7 @@ import { getAssetUrl } from "../../lib/api";
 import { getManifestAssetUris } from "../../lib/manifestAssets";
 import type { LoadState } from "../../hooks/useAsync";
 import type { Manifest } from "../../types/manifest";
+import { SurfacePanel } from "../ui/SurfacePanel";
 
 type DeliveryAssetsPanelProps = {
   manifest: LoadState<Manifest>;
@@ -22,11 +23,14 @@ export const DeliveryAssetsPanel = ({ manifest }: DeliveryAssetsPanelProps) => {
   const assets = getManifestAssetUris(manifest.status === "ready" ? manifest.data : undefined);
 
   return (
-    <section className="delivery-panel delivery-assets-panel">
-      <div className="delivery-panel-header">
-        <h2>交付资产</h2>
-      </div>
-
+    <SurfacePanel
+      className="delivery-panel delivery-assets-panel"
+      header={
+        <div className="delivery-panel-heading">
+          <h2 className="delivery-panel-title">交付资产</h2>
+        </div>
+      }
+    >
       <div className="delivery-assets-grid">
         {ASSET_LABELS.map(({ key, label }) => {
           const uri = assets[key];
@@ -41,6 +45,6 @@ export const DeliveryAssetsPanel = ({ manifest }: DeliveryAssetsPanelProps) => {
           );
         })}
       </div>
-    </section>
+    </SurfacePanel>
   );
 };
