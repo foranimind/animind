@@ -56,9 +56,9 @@
 }
 
 .three-preview-button {
-  background: var(--surface-3);
+  background: rgba(14, 19, 28, 0.95);
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(60, 74, 94, 0.85);
   border-radius: 10px;
   padding: 6px 12px;
   cursor: pointer;
@@ -67,8 +67,8 @@
 }
 
 .three-preview-button:hover {
-  background: rgba(21, 29, 41, 0.9);
-  border-color: var(--border-strong);
+  background: rgba(18, 24, 36, 0.95);
+  border-color: rgba(92, 110, 140, 0.9);
   transform: translateY(-1px);
   box-shadow: 0 8px 16px rgba(5, 10, 20, 0.3);
 }
@@ -79,8 +79,9 @@
 }
 
 .three-preview-button:focus-visible {
-  outline: 2px solid rgba(154, 176, 255, 0.6);
-  outline-offset: 2px;
+  outline: none;
+  border-color: rgba(125, 167, 255, 0.7);
+  box-shadow: 0 0 0 2px rgba(125, 167, 255, 0.3);
 }
 
 .three-preview-progress {
@@ -106,24 +107,9 @@
 }
 
 .three-preview-speed .select-trigger {
-  background: var(--surface-3);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  background: rgba(14, 19, 28, 0.95);
   padding: 4px 8px;
   font-size: 0.8rem;
-  transition: border-color var(--enter) var(--ease), box-shadow var(--enter) var(--ease),
-    background-color var(--enter) var(--ease);
-}
-
-.three-preview-speed .select-trigger:hover {
-  border-color: var(--border-strong);
-}
-
-.three-preview-speed .select-trigger:focus-visible {
-  outline: none;
-  border-color: rgba(154, 176, 255, 0.7);
-  box-shadow: 0 0 0 2px rgba(93, 114, 186, 0.35);
 }
 
 .three-preview-advanced {
@@ -154,7 +140,7 @@
   padding: 16px;
   border-radius: 18px;
   border: 1px solid var(--border);
-  background: rgba(15, 20, 30, 0.78);
+  background: var(--surface);
   box-shadow: var(--shadow);
   animation: ui-fade-in var(--enter) var(--ease) both;
 }
@@ -170,7 +156,7 @@
   border: 1px dashed var(--border-strong);
   border-radius: 16px;
   padding: 24px;
-  background: rgba(15, 20, 30, 0.78);
+  background: var(--surface);
   color: var(--text-muted);
   display: grid;
   gap: 16px;
@@ -206,7 +192,7 @@
   min-height: clamp(360px, 48vh, 520px);
   background:
     radial-gradient(circle at top, rgba(126, 34, 34, 0.16), transparent 52%),
-    rgba(15, 20, 30, 0.82);
+    var(--surface);
 }
 
 .preview-panel-retry {
