@@ -4,6 +4,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import type { JobEvent, JobStatus } from "../types/job";
 
+const STABLE_OPTIONS = {};
+
 let capturedHandler: ((event: JobEvent) => void) | null = null;
 const closeSpy = vi.fn();
 
@@ -31,7 +33,7 @@ type Snapshot = {
 };
 
 const RunnerProbe = ({ onState }: { onState: (snapshot: Snapshot) => void }) => {
-  const { start, jobStatus, connectionState } = useJobRunner("Hello", {});
+  const { start, jobStatus, connectionState } = useJobRunner("Hello", STABLE_OPTIONS);
 
   useEffect(() => {
     start().catch(() => null);
