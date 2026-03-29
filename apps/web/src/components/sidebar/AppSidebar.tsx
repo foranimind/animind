@@ -378,7 +378,7 @@ export const AppSidebar = () => {
                   isActive={isActive}
                   isMenuOpen={isMenuOpen}
                   statusClass={statusClass}
-                  pinned={session.pinned}
+                  pinned={Boolean(session.pinned)}
                   showOpenDetail={session.status === "done" && Boolean(session.jobId)}
                   titleNode={titleNode}
                   actions={menuNode}

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MemoryRouter } from "react-router-dom";
@@ -151,6 +151,41 @@ describe("AppSidebar", () => {
     expect(screen.getByRole("complementary", { name: "工作室导航" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "新建项目" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "收起侧栏" })).toBeInTheDocument();
+  });
+
+  it("persists the collapsed rail state across remounts", () => {
+    const now = new Date().toISOString();
+    const detail = buildDefaultSessionDetail("sess-draft", now);
+    detail.lastPrompt = "Draft scene";
+
+    saveSessionDetail(detail);
+    setActiveSessionId(detail.id);
+
+    const { unmount } = render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    const expandedRail = screen.getByRole("complementary", { name: "工作室导航" });
+    expect(expandedRail).not.toHaveClass("collapsed");
+
+    fireEvent.click(screen.getByRole("button", { name: "收起侧栏" }));
+
+    expect(localStorage.getItem("foranimind.sidebarCollapsed")).toBe("1");
+    expect(screen.getByRole("complementary", { name: "工作室导航" })).toHaveClass("collapsed");
+    expect(screen.getByRole("button", { name: "展开侧栏" })).toBeInTheDocument();
+
+    unmount();
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("complementary", { name: "工作室导航" })).toHaveClass("collapsed");
+    expect(screen.getByRole("button", { name: "展开侧栏" })).toBeInTheDocument();
   });
 
   it("treats a delivery result route as part of the create workflow in the sidebar", () => {
