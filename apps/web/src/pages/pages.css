@@ -119,8 +119,7 @@ body {
 
 .prompt-composer-card,
 .recovered-context-card,
-.create-settings-card,
-.prompt-helper-bar {
+.create-settings-card {
   border-radius: 20px;
   border: 1px solid var(--border);
   background: var(--surface);
@@ -192,7 +191,7 @@ body {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 14px 18px;
+  padding-top: 2px;
 }
 
 .helper-chip {

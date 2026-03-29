@@ -137,9 +137,8 @@ export const CreatePage = () => {
           isSubmitting={isSubmitting}
           onDraftChange={setDraft}
           onSubmit={handleSubmit}
+          helperBar={<PromptHelperBar onInsert={handleInsert} />}
         />
-
-        <PromptHelperBar onInsert={handleInsert} />
 
         <CreateSettingsPanel
           options={detail.options}

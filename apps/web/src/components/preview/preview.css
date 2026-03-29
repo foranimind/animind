@@ -13,7 +13,7 @@
 
 .three-preview-canvas {
   position: relative;
-  min-height: 320px;
+  min-height: clamp(360px, 52vh, 560px);
   background: radial-gradient(circle at 30% 20%, var(--surface-3) 0%, var(--surface) 60%);
 }
 
@@ -151,8 +151,8 @@
 .preview-panel {
   display: grid;
   gap: 12px;
-  padding: 12px;
-  border-radius: 16px;
+  padding: 16px;
+  border-radius: 18px;
   border: 1px solid var(--border);
   background: rgba(15, 20, 30, 0.78);
   box-shadow: var(--shadow);
@@ -168,49 +168,68 @@
 
 .preview-panel-state {
   border: 1px dashed var(--border-strong);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 24px;
   background: rgba(15, 20, 30, 0.78);
   color: var(--text-muted);
   display: grid;
-  gap: 8px;
+  gap: 16px;
+  justify-items: center;
+  align-content: center;
+  text-align: center;
   animation: ui-fade-in var(--enter) var(--ease) both;
+}
+
+.preview-panel-copy {
+  display: grid;
+  gap: 10px;
+  max-width: 56ch;
 }
 
 .preview-panel-title {
   font-weight: 600;
   color: var(--text);
+  font-size: 1.12rem;
 }
 
 .preview-panel-message {
   font-size: 0.9rem;
+  line-height: 1.6;
 }
 
-.preview-panel-state button {
-  justify-self: start;
-  background: var(--surface-3);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: transform var(--enter) var(--ease), background-color var(--enter) var(--ease),
-    border-color var(--enter) var(--ease), box-shadow var(--enter) var(--ease);
+.preview-panel-state-empty,
+.preview-panel-state-loading {
+  min-height: clamp(360px, 48vh, 520px);
 }
 
-.preview-panel-state button:hover {
-  background: rgba(21, 29, 41, 0.9);
-  border-color: var(--border-strong);
-  transform: translateY(-1px);
-  box-shadow: 0 8px 16px rgba(5, 10, 20, 0.3);
+.preview-panel-state-error {
+  min-height: clamp(360px, 48vh, 520px);
+  background:
+    radial-gradient(circle at top, rgba(126, 34, 34, 0.16), transparent 52%),
+    rgba(15, 20, 30, 0.82);
 }
 
-.preview-panel-state button:active {
-  transform: translateY(0);
-  transition-duration: var(--exit);
+.preview-panel-retry {
+  min-width: 180px;
+  justify-self: center;
 }
 
-.preview-panel-state button:focus-visible {
-  outline: 2px solid rgba(154, 176, 255, 0.6);
-  outline-offset: 2px;
+@media (max-width: 640px) {
+  .three-preview-canvas {
+    min-height: 300px;
+  }
+
+  .preview-panel {
+    padding: 12px;
+  }
+
+  .preview-panel-state {
+    min-height: 280px;
+    padding: 20px 16px;
+  }
+
+  .preview-panel-retry {
+    width: 100%;
+    min-width: 0;
+  }
 }

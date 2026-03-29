@@ -13,7 +13,7 @@ export const DeliveryExportPanel = ({ manifest }: DeliveryExportPanelProps) => {
   const exportZip = assets.exportZip;
 
   return (
-    <section className="delivery-panel">
+    <section className="delivery-panel delivery-export-panel">
       <div className="delivery-panel-header">
         <h2>导出</h2>
       </div>

@@ -31,20 +31,22 @@ export const PreviewPanel = ({
   const retryHandler = onRetry ?? reload;
 
   if (!resolvedConfig && !effectiveJobId && !resolvedLoading && !resolvedError) {
-    return <div className="preview-panel-state">{emptyMessage}</div>;
+    return <div className="preview-panel-state preview-panel-state-empty">{emptyMessage}</div>;
   }
 
   if (resolvedLoading) {
-    return <div className="preview-panel-state">正在加载预览配置...</div>;
+    return <div className="preview-panel-state preview-panel-state-loading">正在加载预览配置...</div>;
   }
 
   if (resolvedError) {
     return (
-      <div className="preview-panel-state">
-        <div className="preview-panel-title">预览配置加载失败</div>
-        <div className="preview-panel-message">{resolvedError}</div>
-        <button type="button" onClick={retryHandler}>
-          重试
+      <div className="preview-panel-state preview-panel-state-error">
+        <div className="preview-panel-copy">
+          <div className="preview-panel-title">预览配置暂时不可用</div>
+          <div className="preview-panel-message">{resolvedError}</div>
+        </div>
+        <button type="button" className="primary-button preview-panel-retry" onClick={retryHandler}>
+          重新加载预览
         </button>
       </div>
     );

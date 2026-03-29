@@ -22,7 +22,7 @@ export const DeliveryAssetsPanel = ({ manifest }: DeliveryAssetsPanelProps) => {
   const assets = getManifestAssetUris(manifest.status === "ready" ? manifest.data : undefined);
 
   return (
-    <section className="delivery-panel">
+    <section className="delivery-panel delivery-assets-panel">
       <div className="delivery-panel-header">
         <h2>交付资产</h2>
       </div>

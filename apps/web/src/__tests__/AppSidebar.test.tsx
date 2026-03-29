@@ -66,4 +66,97 @@ describe("AppSidebar", () => {
 
     expect(navigateSpy).toHaveBeenCalledWith("/jobs/job-123");
   });
+
+  it("does not mark a recent project as current on the library route", () => {
+    const now = new Date().toISOString();
+    const draft = buildDefaultSessionDetail("sess-draft", now);
+    draft.lastPrompt = "Draft scene";
+
+    const done = buildDefaultSessionDetail("sess-done", now);
+    done.status = "done";
+    done.jobId = "job-123";
+    done.lastPrompt = "Delivered scene";
+
+    saveSessionDetail(draft);
+    saveSessionDetail(done);
+    setActiveSessionId(draft.id);
+
+    render(
+      <MemoryRouter initialEntries={["/works"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("button", { name: "Draft scene" })).not.toHaveClass("active");
+    expect(screen.getByRole("button", { name: "Delivered scene" })).not.toHaveClass("active");
+  });
+
+  it("does not mark a recent project as current on the create route", () => {
+    const now = new Date().toISOString();
+    const draft = buildDefaultSessionDetail("sess-draft", now);
+    draft.lastPrompt = "Draft scene";
+
+    const done = buildDefaultSessionDetail("sess-done", now);
+    done.status = "done";
+    done.jobId = "job-123";
+    done.lastPrompt = "Delivered scene";
+
+    saveSessionDetail(draft);
+    saveSessionDetail(done);
+    setActiveSessionId(draft.id);
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("button", { name: "Draft scene" })).not.toHaveClass("active");
+    expect(screen.getByRole("button", { name: "Delivered scene" })).not.toHaveClass("active");
+  });
+
+  it("does not highlight any recent project when the active session is absent from the list", () => {
+    const now = new Date().toISOString();
+    const detail = buildDefaultSessionDetail("sess-done", now);
+    detail.status = "done";
+    detail.jobId = "job-123";
+    detail.lastPrompt = "Delivered scene";
+
+    saveSessionDetail(detail);
+    setActiveSessionId("sess-missing");
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("button", { name: "Delivered scene" })).not.toHaveClass("active");
+  });
+
+  it("treats a delivery result route as part of the create workflow in the sidebar", () => {
+    const now = new Date().toISOString();
+    const draft = buildDefaultSessionDetail("sess-draft", now);
+    draft.lastPrompt = "Draft scene";
+
+    const done = buildDefaultSessionDetail("sess-done", now);
+    done.status = "done";
+    done.jobId = "job-123";
+    done.lastPrompt = "Delivered scene";
+
+    saveSessionDetail(draft);
+    saveSessionDetail(done);
+    setActiveSessionId(draft.id);
+
+    render(
+      <MemoryRouter initialEntries={["/works/job-123"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("link", { name: "创作" })).toHaveClass("active");
+    expect(screen.getByRole("link", { name: "我的作品" })).not.toHaveClass("active");
+    expect(screen.getByRole("button", { name: "Delivered scene" })).toHaveClass("active");
+    expect(screen.getByRole("button", { name: "Draft scene" })).not.toHaveClass("active");
+  });
 });

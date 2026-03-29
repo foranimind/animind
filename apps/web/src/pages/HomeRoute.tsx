@@ -7,7 +7,10 @@ import { CreatePage } from "./CreatePage";
 export const HomeRoute = () => {
   const activeSessionId = getActiveSessionId();
   const detail = activeSessionId ? getSessionDetail(activeSessionId) : null;
-  const href = detail ? resolveSessionHref({ status: detail.status, jobId: detail.jobId }) : "/";
+  const href =
+    detail && (detail.status === "queued" || detail.status === "running")
+      ? resolveSessionHref({ status: detail.status, jobId: detail.jobId })
+      : "/";
 
   if (href !== "/") {
     return <Navigate to={href} replace />;

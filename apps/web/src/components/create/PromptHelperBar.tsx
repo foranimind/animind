@@ -1,8 +1,8 @@
 const HELPER_SNIPPETS = [
-  "镜头：缓慢环绕主角",
-  "光线：傍晚逆光与霓虹补光",
-  "动作：角色抬头观察远处",
-  "配乐：合成器氛围推进",
+  { label: "镜头", value: "镜头：" },
+  { label: "光线", value: "光线：" },
+  { label: "动作", value: "动作：" },
+  { label: "配乐", value: "配乐：" },
 ];
 
 type PromptHelperBarProps = {
@@ -11,14 +11,14 @@ type PromptHelperBarProps = {
 
 export const PromptHelperBar = ({ onInsert }: PromptHelperBarProps) => (
   <section className="prompt-helper-bar" aria-label="Prompt helper">
-    {HELPER_SNIPPETS.map((snippet) => (
+    {HELPER_SNIPPETS.map(({ label, value }) => (
       <button
-        key={snippet}
+        key={label}
         type="button"
         className="helper-chip"
-        onClick={() => onInsert(snippet)}
+        onClick={() => onInsert(value)}
       >
-        {snippet}
+        {label}
       </button>
     ))}
   </section>

@@ -95,19 +95,19 @@ export const getWorkDetailStatusInfo = ({
   manifestNotFound,
 }: WorkDetailStatusArgs): { label: string; tone: StatusTone } => {
   if (manifestStatus === "loading") {
-    return { label: "Loading", tone: "loading" };
+    return { label: "加载中", tone: "loading" };
   }
   if (manifestStatus === "error") {
-    return { label: manifestNotFound ? "Not found" : "Error", tone: "error" };
+    return { label: manifestNotFound ? "未找到" : "加载失败", tone: "error" };
   }
   if (manifestStatus === "ready" && previewStatus === "loading") {
-    return { label: "Preview loading", tone: "loading" };
+    return { label: "预览加载中", tone: "loading" };
   }
   if (previewStatus === "error") {
-    return { label: "Preview issue", tone: "warning" };
+    return { label: "预览异常", tone: "warning" };
   }
   if (manifestStatus === "ready") {
-    return { label: "Ready", tone: "ready" };
+    return { label: "就绪", tone: "ready" };
   }
-  return { label: "Idle", tone: "idle" };
+  return { label: "待加载", tone: "idle" };
 };

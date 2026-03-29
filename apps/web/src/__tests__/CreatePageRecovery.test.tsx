@@ -85,6 +85,26 @@ describe("CreatePage recovery", () => {
     await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith("/jobs/job_live"));
   });
 
+  it("shows helper chips as category prompts instead of concrete examples", async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <CreatePage />
+      </MemoryRouter>
+    );
+
+    const composer = await screen.findByPlaceholderText("描述你的场景、光线、动作与配乐...");
+
+    expect(screen.getByRole("button", { name: "镜头" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "光线" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "镜头：缓慢环绕主角" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "镜头" }));
+
+    expect(composer).toHaveValue("镜头：");
+    expect(screen.getByRole("button", { name: "镜头" }).closest(".prompt-composer-card")).toBeTruthy();
+    expect(container.querySelector(".create-launch-shell > .prompt-helper-bar")).toBeNull();
+  });
+
   it("updates to the newly active draft session while already on the create route", async () => {
     const now = new Date().toISOString();
     const first = buildDefaultSessionDetail("sess_first", now);

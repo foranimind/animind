@@ -1,9 +1,12 @@
+import type { ReactNode } from "react";
+
 type PromptComposerProps = {
   draft: string;
   canSubmit: boolean;
   isSubmitting: boolean;
   onDraftChange: (value: string) => void;
   onSubmit: () => void;
+  helperBar?: ReactNode;
 };
 
 export const PromptComposer = ({
@@ -12,6 +15,7 @@ export const PromptComposer = ({
   isSubmitting,
   onDraftChange,
   onSubmit,
+  helperBar,
 }: PromptComposerProps) => (
   <section className="prompt-composer-card">
     <div className="prompt-composer-header">
@@ -34,6 +38,8 @@ export const PromptComposer = ({
       placeholder="描述你的场景、光线、动作与配乐..."
       onChange={(event) => onDraftChange(event.target.value)}
     />
+
+    {helperBar}
 
     <div className="prompt-composer-actions">
       <button

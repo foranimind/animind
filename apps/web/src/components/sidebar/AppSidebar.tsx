@@ -5,7 +5,7 @@ import {
   type KeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { useDismissable } from "../../hooks/useDismissable";
 import { useSessions } from "../../hooks/useSessions";
@@ -26,6 +26,7 @@ const SIDEBAR_COLLAPSE_KEY = "foranimind.sidebarCollapsed";
 
 export const AppSidebar = () => {
   const { items } = useSessions();
+  const location = useLocation();
   const navigate = useNavigate();
   const activeSessionId = getActiveSessionId();
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -149,6 +150,27 @@ export const AppSidebar = () => {
     });
   };
 
+  const pathname = location.pathname;
+  const isJobRoute = pathname.startsWith("/jobs/");
+  const isDeliveryRoute = pathname.startsWith("/works/");
+  const isCreateNavActive =
+    pathname === "/" || isJobRoute || isDeliveryRoute;
+  const routeSessionId = (() => {
+    if (!isJobRoute && !isDeliveryRoute) {
+      return null;
+    }
+    const rawJobId = pathname.split("/")[2];
+    if (!rawJobId) {
+      return null;
+    }
+    const jobId = decodeURIComponent(rawJobId);
+    return items.find((item) => item.jobId === jobId)?.id ?? null;
+  })();
+  const highlightedSessionId = isJobRoute || isDeliveryRoute ? routeSessionId : null;
+  const resolvedHighlightedSessionId = items.some((item) => item.id === highlightedSessionId)
+    ? highlightedSessionId
+    : null;
+
   return (
     <aside className={`app-sidebar ${isCollapsed ? "collapsed" : ""}`} aria-label="Sidebar">
       <div className="sidebar-top">
@@ -185,7 +207,7 @@ export const AppSidebar = () => {
         <NavLink
           end
           to="/"
-          className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}
+          className={() => `sidebar-link ${isCreateNavActive ? "active" : ""}`}
           aria-label="创作"
           title="创作"
         >
@@ -203,6 +225,7 @@ export const AppSidebar = () => {
           <span className="sidebar-link-label">创作</span>
         </NavLink>
         <NavLink
+          end
           to="/works"
           className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}
           aria-label="我的作品"
@@ -237,7 +260,7 @@ export const AppSidebar = () => {
             <div className="sidebar-empty">暂无项目</div>
           ) : (
             items.map((session) => {
-              const isActive = activeSessionId === session.id;
+              const isActive = resolvedHighlightedSessionId === session.id;
               const isMenuOpen = menuOpenId === session.id;
               const isRenaming = renamingId === session.id;
               const statusClass =

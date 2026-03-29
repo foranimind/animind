@@ -41,6 +41,31 @@ describe("App routes", () => {
     expect(screen.getByText(/job-123/)).toBeInTheDocument();
   });
 
+  it("keeps a completed active session on the create route instead of reopening delivery", async () => {
+    const now = new Date().toISOString();
+    const detail = buildDefaultSessionDetail("sess-done", now);
+    detail.status = "done";
+    detail.jobId = "job-456";
+    detail.lastPrompt = "Completed scene";
+    detail.draft = "Completed scene";
+
+    saveSessionDetail(detail);
+    setActiveSessionId(detail.id);
+
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/");
+    });
+
+    expect(screen.getByText("创作描述")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "交付结果" })).not.toBeInTheDocument();
+  });
+
   it("does not render running or delivery controls on the create route", () => {
     render(
       <MemoryRouter initialEntries={["/"]}>

@@ -72,7 +72,7 @@ describe("status helpers", () => {
           manifestStatus: "loading",
           previewStatus: "idle",
         })
-      ).toEqual({ label: "Loading", tone: "loading" });
+      ).toEqual({ label: "加载中", tone: "loading" });
 
       expect(
         getWorkDetailStatusInfo({
@@ -80,35 +80,35 @@ describe("status helpers", () => {
           previewStatus: "idle",
           manifestNotFound: true,
         })
-      ).toEqual({ label: "Not found", tone: "error" });
+      ).toEqual({ label: "未找到", tone: "error" });
 
       expect(
         getWorkDetailStatusInfo({
           manifestStatus: "ready",
           previewStatus: "loading",
         })
-      ).toEqual({ label: "Preview loading", tone: "loading" });
+      ).toEqual({ label: "预览加载中", tone: "loading" });
 
       expect(
         getWorkDetailStatusInfo({
           manifestStatus: "ready",
           previewStatus: "error",
         })
-      ).toEqual({ label: "Preview issue", tone: "warning" });
+      ).toEqual({ label: "预览异常", tone: "warning" });
 
       expect(
         getWorkDetailStatusInfo({
           manifestStatus: "ready",
           previewStatus: "ready",
         })
-      ).toEqual({ label: "Ready", tone: "ready" });
+      ).toEqual({ label: "就绪", tone: "ready" });
 
       expect(
         getWorkDetailStatusInfo({
           manifestStatus: "idle",
           previewStatus: "idle",
         })
-      ).toEqual({ label: "Idle", tone: "idle" });
+      ).toEqual({ label: "待加载", tone: "idle" });
     });
   });
 });

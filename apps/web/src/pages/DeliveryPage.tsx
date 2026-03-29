@@ -32,7 +32,9 @@ export const DeliveryPage = ({ jobId }: DeliveryPageProps) => {
       </header>
 
       <div className="delivery-shell">
-        <DeliveryHeroPreview preview={preview} onRetry={reload} />
+        <div className="delivery-main-column">
+          <DeliveryHeroPreview preview={preview} onRetry={reload} />
+        </div>
         <div className="delivery-side-column">
           <DeliveryAssetsPanel manifest={manifest} />
           <DeliveryExportPanel manifest={manifest} />

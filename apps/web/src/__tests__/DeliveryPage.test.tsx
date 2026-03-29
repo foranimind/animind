@@ -32,7 +32,8 @@ describe("DeliveryPage", () => {
   it("keeps delivery assets visible even when preview config is missing", () => {
     render(<DeliveryPage jobId="job_done" />);
 
-    expect(screen.getByText("后端尚未生成 preview_config")).toBeInTheDocument();
+    expect(screen.getByText("预览暂未生成")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重新加载预览" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "导出视频" })).toBeInTheDocument();
   });
 });
