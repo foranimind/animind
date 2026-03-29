@@ -1,0 +1,86 @@
+.surface-panel {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0))
+    var(--surface-1);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(18px);
+}
+
+.surface-panel-hero {
+  background:
+    radial-gradient(circle at top left, rgba(185, 180, 255, 0.12), transparent 38%),
+    radial-gradient(circle at top right, rgba(232, 194, 122, 0.08), transparent 30%),
+    var(--surface-hero);
+}
+
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border-radius: 999px;
+  padding: 0 18px;
+  border: 1px solid var(--border-subtle);
+  font: inherit;
+  color: var(--text-primary);
+}
+
+.ui-button-primary {
+  background: linear-gradient(180deg, rgba(232, 194, 122, 0.16), rgba(185, 180, 255, 0.12))
+    rgba(22, 24, 39, 0.88);
+  border-color: var(--border-strong);
+}
+
+.ui-button-ghost {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ui-button-danger {
+  background: rgba(120, 28, 28, 0.24);
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.page-header-block {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+}
+
+.page-eyebrow {
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--accent-signal);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.page-title {
+  margin: 0;
+  font-family: "Newsreader", serif;
+  font-size: clamp(2.2rem, 3vw, 3.4rem);
+}
+
+.meta-chip,
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+}
+
+.status-pill {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.status-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.8;
+}
