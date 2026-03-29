@@ -85,6 +85,18 @@ describe("CreatePage recovery", () => {
     await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith("/jobs/job_live"));
   });
 
+  it("organizes the composer desk into main and support landmarks", async () => {
+    render(
+      <MemoryRouter>
+        <CreatePage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("region", { name: "创作主区" })).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "创作设置" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "开始生成" })).toBeInTheDocument();
+  });
+
   it("shows helper chips as category prompts instead of concrete examples", async () => {
     const { container } = render(
       <MemoryRouter>
@@ -101,8 +113,8 @@ describe("CreatePage recovery", () => {
     await userEvent.click(screen.getByRole("button", { name: "镜头" }));
 
     expect(composer).toHaveValue("镜头：");
-    expect(screen.getByRole("button", { name: "镜头" }).closest(".prompt-composer-card")).toBeTruthy();
-    expect(container.querySelector(".create-launch-shell > .prompt-helper-bar")).toBeNull();
+    expect(screen.getByRole("button", { name: "镜头" }).closest(".prompt-composer-panel")).toBeTruthy();
+    expect(container.querySelector(".create-desk-layout > .prompt-helper-bar")).toBeNull();
   });
 
   it("updates to the newly active draft session while already on the create route", async () => {

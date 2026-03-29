@@ -1,0 +1,71 @@
+.create-page {
+  gap: 24px;
+  padding: 32px 24px 48px;
+}
+
+.create-desk-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.9fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.create-desk-main,
+.create-desk-side {
+  min-width: 0;
+}
+
+.create-desk-side {
+  display: grid;
+  gap: 18px;
+}
+
+.prompt-composer-panel,
+.create-settings-panel,
+.recovered-context-panel {
+  overflow: hidden;
+}
+
+.prompt-composer-panel .surface-panel-header,
+.create-settings-panel .surface-panel-header {
+  padding: 20px 20px 0;
+}
+
+.prompt-composer-panel .surface-panel-body,
+.create-settings-panel .surface-panel-body,
+.recovered-context-panel .surface-panel-body {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+}
+
+.prompt-helper-chip {
+  background: rgba(18, 24, 36, 0.85);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  transition: border-color var(--enter) var(--ease), transform var(--enter) var(--ease),
+    background-color var(--enter) var(--ease);
+}
+
+.prompt-helper-chip:hover {
+  border-color: rgba(154, 176, 255, 0.7);
+  background: rgba(28, 36, 52, 0.92);
+  transform: translateY(-1px);
+}
+
+.prompt-helper-chip:focus-visible {
+  outline: 2px solid rgba(125, 167, 255, 0.4);
+  outline-offset: 2px;
+}
+
+@media (max-width: 980px) {
+  .create-page {
+    padding: 20px 16px 32px;
+  }
+
+  .create-desk-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

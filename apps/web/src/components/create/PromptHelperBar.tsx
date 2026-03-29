@@ -10,12 +10,12 @@ type PromptHelperBarProps = {
 };
 
 export const PromptHelperBar = ({ onInsert }: PromptHelperBarProps) => (
-  <section className="prompt-helper-bar" aria-label="Prompt helper">
+  <section className="prompt-helper-bar" aria-label="创作提示">
     {HELPER_SNIPPETS.map(({ label, value }) => (
       <button
         key={label}
         type="button"
-        className="helper-chip"
+        className="meta-chip prompt-helper-chip"
         onClick={() => onInsert(value)}
       >
         {label}

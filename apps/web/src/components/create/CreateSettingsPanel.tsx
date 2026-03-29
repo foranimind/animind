@@ -6,6 +6,7 @@ import {
   STYLE_OPTIONS,
 } from "../../lib/sessionDefaults";
 import type { SessionOptions } from "../../lib/storage";
+import { SurfacePanel } from "../ui/SurfacePanel";
 
 type CreateSettingsPanelProps = {
   options: SessionOptions;
@@ -28,14 +29,17 @@ export const CreateSettingsPanel = ({
   onMoodChange,
   onDurationChange,
 }: CreateSettingsPanelProps) => (
-  <section className="create-settings-card">
-    <div className="settings-header">
-      <div>
-        <h2 className="settings-title">生成设置</h2>
-        <p className="settings-subtitle">保留必要参数，去掉运行和交付面板。</p>
+  <SurfacePanel
+    className="create-settings-panel"
+    header={
+      <div className="settings-header">
+        <div>
+          <h2 className="settings-title">生成设置</h2>
+          <p className="settings-subtitle">保留必要参数，收纳辅助信息，不抢主创作区。</p>
+        </div>
       </div>
-    </div>
-
+    }
+  >
     <div className="settings-grid">
       <label className="settings-field">
         <span>风格</span>
@@ -86,5 +90,5 @@ export const CreateSettingsPanel = ({
         <dd>{findLabel(EXPORT_PRESETS, options.exportPreset)}</dd>
       </div>
     </dl>
-  </section>
+  </SurfacePanel>
 );

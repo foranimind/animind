@@ -1,4 +1,5 @@
 import type { SessionMessage, SessionRecovery } from "../../lib/storage";
+import { SurfacePanel } from "../ui/SurfacePanel";
 
 type RecoveredContextPanelProps = {
   recovery?: SessionRecovery;
@@ -16,7 +17,10 @@ export const RecoveredContextPanel = ({
   const compactHistory = messages.filter((item) => item.role !== "tool").slice(-4);
 
   return (
-    <section className="recovered-context-card">
+    <SurfacePanel
+      tone={recovery.reason === "error" ? "muted" : "default"}
+      className="recovered-context-panel"
+    >
       <div className={`recovery-banner recovery-${recovery.reason}`}>
         <strong>{recovery.reason === "canceled" ? "任务已取消" : "生成失败"}</strong>
         <span>{recovery.message ?? "请调整输入后重试。"}</span>
@@ -32,6 +36,6 @@ export const RecoveredContextPanel = ({
           </ul>
         </div>
       ) : null}
-    </section>
+    </SurfacePanel>
   );
 };

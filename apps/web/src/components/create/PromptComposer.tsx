@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 
+import { ActionButton } from "../ui/ActionButton";
+import { SurfacePanel } from "../ui/SurfacePanel";
+
 type PromptComposerProps = {
   draft: string;
   canSubmit: boolean;
@@ -17,16 +20,20 @@ export const PromptComposer = ({
   onSubmit,
   helperBar,
 }: PromptComposerProps) => (
-  <section className="prompt-composer-card">
-    <div className="prompt-composer-header">
-      <div>
-        <h1 className="prompt-composer-title">开始新的生成任务</h1>
-        <p className="prompt-composer-subtitle">
-          先整理场景描述，再直接发起任务。运行和交付状态由后续页面负责。
-        </p>
+  <SurfacePanel
+    tone="hero"
+    className="prompt-composer-panel"
+    header={
+      <div className="prompt-composer-header">
+        <div>
+          <h2 className="prompt-composer-title">开始新的生成任务</h2>
+          <p className="prompt-composer-subtitle">
+            把镜头、光线、动作和配乐组织成一条清晰的创作描述。
+          </p>
+        </div>
       </div>
-    </div>
-
+    }
+  >
     <label className="prompt-composer-label" htmlFor="prompt-composer">
       创作描述
     </label>
@@ -34,7 +41,7 @@ export const PromptComposer = ({
       id="prompt-composer"
       className="prompt-composer-input"
       value={draft}
-      rows={6}
+      rows={8}
       placeholder="描述你的场景、光线、动作与配乐..."
       onChange={(event) => onDraftChange(event.target.value)}
     />
@@ -42,14 +49,9 @@ export const PromptComposer = ({
     {helperBar}
 
     <div className="prompt-composer-actions">
-      <button
-        type="button"
-        className="primary-button"
-        disabled={!canSubmit || isSubmitting}
-        onClick={onSubmit}
-      >
-        <span>{isSubmitting ? "创建中..." : "开始生成"}</span>
-      </button>
+      <ActionButton disabled={!canSubmit || isSubmitting} onClick={onSubmit}>
+        {isSubmitting ? "创建中..." : "开始生成"}
+      </ActionButton>
     </div>
-  </section>
+  </SurfacePanel>
 );

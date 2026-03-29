@@ -5,6 +5,7 @@ import { CreateSettingsPanel } from "../components/create/CreateSettingsPanel";
 import { PromptComposer } from "../components/create/PromptComposer";
 import { PromptHelperBar } from "../components/create/PromptHelperBar";
 import { RecoveredContextPanel } from "../components/create/RecoveredContextPanel";
+import { PageHeader } from "../components/ui/PageHeader";
 import { createJob } from "../lib/api";
 import { createNewSession } from "../lib/sessionActions";
 import {
@@ -16,6 +17,7 @@ import {
   type SessionDetail,
 } from "../lib/storage";
 import "./pages.css";
+import "./create.css";
 
 const getPersistedPageDetail = (): SessionDetail => {
   const activeSessionId = getActiveSessionId();
@@ -128,39 +130,48 @@ export const CreatePage = () => {
 
   return (
     <div className="page create-page">
-      <div className="create-launch-shell">
-        <RecoveredContextPanel recovery={detail.recovery} messages={detail.messages} />
+      <PageHeader
+        eyebrow="Create"
+        title="创作台"
+        description="整理场景、镜头、动作和情绪，然后直接发起新的生成任务。"
+      />
 
-        <PromptComposer
-          draft={draft}
-          canSubmit={canSubmit}
-          isSubmitting={isSubmitting}
-          onDraftChange={setDraft}
-          onSubmit={handleSubmit}
-          helperBar={<PromptHelperBar onInsert={handleInsert} />}
-        />
+      <div className="create-desk-layout">
+        <section className="create-desk-main" aria-label="创作主区">
+          <PromptComposer
+            draft={draft}
+            canSubmit={canSubmit}
+            isSubmitting={isSubmitting}
+            onDraftChange={setDraft}
+            onSubmit={handleSubmit}
+            helperBar={<PromptHelperBar onInsert={handleInsert} />}
+          />
+        </section>
 
-        <CreateSettingsPanel
-          options={detail.options}
-          onStyleChange={(value) =>
-            updateOptions((current) => ({
-              ...current,
-              style: value,
-            }))
-          }
-          onMoodChange={(value) =>
-            updateOptions((current) => ({
-              ...current,
-              mood: value,
-            }))
-          }
-          onDurationChange={(value) =>
-            updateOptions((current) => ({
-              ...current,
-              duration: value,
-            }))
-          }
-        />
+        <aside className="create-desk-side" aria-label="创作设置">
+          <RecoveredContextPanel recovery={detail.recovery} messages={detail.messages} />
+          <CreateSettingsPanel
+            options={detail.options}
+            onStyleChange={(value) =>
+              updateOptions((current) => ({
+                ...current,
+                style: value,
+              }))
+            }
+            onMoodChange={(value) =>
+              updateOptions((current) => ({
+                ...current,
+                mood: value,
+              }))
+            }
+            onDurationChange={(value) =>
+              updateOptions((current) => ({
+                ...current,
+                duration: value,
+              }))
+            }
+          />
+        </aside>
       </div>
     </div>
   );
