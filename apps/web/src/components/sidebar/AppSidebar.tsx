@@ -19,6 +19,7 @@ import {
   setSessionPinned,
   touchSession,
 } from "../../lib/storage";
+import { resolveSessionHref } from "../../lib/sessionRouting";
 import "./sidebar.css";
 
 const SIDEBAR_COLLAPSE_KEY = "foranimind.sidebarCollapsed";
@@ -74,9 +75,13 @@ export const AppSidebar = () => {
   };
 
   const handleSessionSelect = (sessionId: string) => {
+    const session = items.find((entry) => entry.id === sessionId);
+    if (!session) {
+      return;
+    }
     touchSession(sessionId);
     setActiveSessionId(sessionId);
-    navigate("/");
+    navigate(resolveSessionHref({ status: session.status, jobId: session.jobId }));
   };
 
   const resolveNextSessionId = (targetId: string) => {
@@ -105,14 +110,11 @@ export const AppSidebar = () => {
   };
 
   const handleOpenDetail = (
-    jobId: string | undefined,
+    session: { status: "draft" | "queued" | "running" | "done" | "error" | "canceled"; jobId?: string },
     event: ReactMouseEvent<HTMLButtonElement>
   ) => {
     event.stopPropagation();
-    if (!jobId) {
-      return;
-    }
-    navigate(`/works/${jobId}`);
+    navigate(resolveSessionHref(session));
   };
 
   const startRename = (sessionId: string, title: string) => {
@@ -327,7 +329,7 @@ export const AppSidebar = () => {
                         type="button"
                         className="session-open"
                         aria-label="打开详情"
-                        onClick={(event) => handleOpenDetail(session.jobId, event)}
+                        onClick={(event) => handleOpenDetail(session, event)}
                       >
                         <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
                           <path
