@@ -1,8 +1,12 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
 import { JobRunPage } from "../pages/JobRunPage";
+
+const runCssSource = readFileSync(resolve(process.cwd(), "src/pages/run.css"), "utf8");
 
 const { subscribeExistingJobSpy } = vi.hoisted(() => ({
   subscribeExistingJobSpy: vi.fn(() => Promise.resolve()),
@@ -56,19 +60,10 @@ describe("Run panels", () => {
     expect(screen.getByText("预览生成后会出现在这里。")).toBeVisible();
   });
 
-  it("keeps the run-stage layout aligned with document order", () => {
-    render(
-      <MemoryRouter>
-        <JobRunPage />
-      </MemoryRouter>
+  it("keeps run.css free of the mobile preview reorder rule", () => {
+    expect(runCssSource).toContain("@media (max-width: 960px)");
+    expect(runCssSource).not.toMatch(
+      /@media\s*\(max-width:\s*960px\)\s*\{[\s\S]*?\.run-stage-main\s*\{[\s\S]*?order:\s*-1;?[\s\S]*?\}/
     );
-
-    const supportRegion = screen.getByRole("region", { name: "执行进度" });
-    const previewRegion = screen.getByRole("region", { name: "预览舞台" });
-    const stageLayout = supportRegion.parentElement;
-
-    expect(stageLayout).toHaveClass("run-stage-layout");
-    expect(stageLayout?.children[0]).toBe(supportRegion);
-    expect(stageLayout?.children[1]).toBe(previewRegion);
   });
 });
