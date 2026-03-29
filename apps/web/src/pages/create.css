@@ -6,16 +6,29 @@
 .create-desk-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.9fr);
+  grid-template-areas:
+    "main recovery"
+    "main side";
   gap: 24px;
   align-items: start;
 }
 
 .create-desk-main,
-.create-desk-side {
+.create-desk-side,
+.create-desk-recovery {
   min-width: 0;
 }
 
+.create-desk-main {
+  grid-area: main;
+}
+
+.create-desk-recovery {
+  grid-area: recovery;
+}
+
 .create-desk-side {
+  grid-area: side;
   display: grid;
   gap: 18px;
 }
@@ -60,6 +73,17 @@
   outline-offset: 2px;
 }
 
+.prompt-composer-submit:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 0.45;
+  color: rgba(230, 233, 239, 0.62);
+  border-color: rgba(90, 106, 132, 0.55);
+  background: rgba(20, 26, 38, 0.72);
+  box-shadow: none;
+  filter: saturate(0.55);
+}
+
 @media (max-width: 980px) {
   .create-page {
     padding: 20px 16px 32px;
@@ -67,5 +91,12 @@
 
   .create-desk-layout {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+
+  .create-desk-main,
+  .create-desk-side,
+  .create-desk-recovery {
+    grid-area: auto;
   }
 }

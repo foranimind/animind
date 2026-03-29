@@ -94,7 +94,41 @@ describe("CreatePage recovery", () => {
 
     expect(await screen.findByRole("region", { name: "创作主区" })).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "创作设置" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "开始生成" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "开始生成" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "开始生成" })).toHaveClass("prompt-composer-submit");
+  });
+
+  it("places recovered context before the composer in document order when recovery exists", async () => {
+    const now = new Date().toISOString();
+    const detail = buildDefaultSessionDetail("sess_recovery_order", now);
+    detail.status = "canceled";
+    detail.draft = "restored draft";
+    detail.lastPrompt = detail.draft;
+    detail.messages.push({ id: "user-1", role: "user", content: detail.draft });
+    detail.recovery = {
+      reason: "canceled",
+      message: "恢复排序",
+      updatedAt: now,
+    };
+    saveSessionDetail(detail);
+    setActiveSessionId(detail.id);
+
+    render(
+      <MemoryRouter>
+        <CreatePage />
+      </MemoryRouter>
+    );
+
+    const recoveryPanel = screen.getByText("任务已取消").closest(".recovered-context-panel");
+    const composerRegion = screen.getByRole("region", { name: "创作主区" });
+
+    expect(recoveryPanel).toBeTruthy();
+    if (!recoveryPanel) {
+      throw new Error("Expected recovered context panel");
+    }
+    expect(
+      recoveryPanel.compareDocumentPosition(composerRegion) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
   it("shows helper chips as category prompts instead of concrete examples", async () => {

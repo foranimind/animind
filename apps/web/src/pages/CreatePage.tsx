@@ -137,6 +137,12 @@ export const CreatePage = () => {
       />
 
       <div className="create-desk-layout">
+        {detail.recovery ? (
+          <div className="create-desk-recovery">
+            <RecoveredContextPanel recovery={detail.recovery} messages={detail.messages} />
+          </div>
+        ) : null}
+
         <section className="create-desk-main" aria-label="创作主区">
           <PromptComposer
             draft={draft}
@@ -149,7 +155,6 @@ export const CreatePage = () => {
         </section>
 
         <aside className="create-desk-side" aria-label="创作设置">
-          <RecoveredContextPanel recovery={detail.recovery} messages={detail.messages} />
           <CreateSettingsPanel
             options={detail.options}
             onStyleChange={(value) =>

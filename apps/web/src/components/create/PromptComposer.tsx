@@ -49,7 +49,11 @@ export const PromptComposer = ({
     {helperBar}
 
     <div className="prompt-composer-actions">
-      <ActionButton disabled={!canSubmit || isSubmitting} onClick={onSubmit}>
+      <ActionButton
+        className="prompt-composer-submit"
+        disabled={!canSubmit || isSubmitting}
+        onClick={onSubmit}
+      >
         {isSubmitting ? "创建中..." : "开始生成"}
       </ActionButton>
     </div>
