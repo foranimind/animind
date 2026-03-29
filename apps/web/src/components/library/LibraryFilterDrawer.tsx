@@ -62,19 +62,19 @@ export const LibraryFilterDrawer = ({
         className="library-drawer-panel"
         role="dialog"
         aria-modal="true"
-        aria-label="Filters"
+        aria-label="作品筛选"
         ref={panelRef}
       >
         <header className="library-drawer-header">
           <div>
-            <div className="library-drawer-title">筛选</div>
+            <div className="library-drawer-title">作品筛选</div>
             <div className="library-drawer-subtitle">细化作品筛选条件。</div>
           </div>
-                    <button
+          <button
             type="button"
             className="library-drawer-close"
             onClick={onClose}
-            aria-label="Close filters"
+            aria-label="关闭筛选"
           >
             <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
               <path

@@ -88,7 +88,9 @@ export const WorkCard = ({
           )}
         </div>
         <div className="work-card-body">
-          <div className="work-card-title">{title}</div>
+          <div className="work-card-copy">
+            <div className="work-card-title">{title}</div>
+          </div>
           <div className="work-card-meta">
             <span className="work-card-tag">{displayStyle}</span>
             <span className="work-card-tag">{displayDuration}</span>

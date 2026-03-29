@@ -13,7 +13,11 @@ type SelectMenuProps = {
   ariaLabel: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  className?: string;
+  panelClassName?: string;
 };
+
+const joinClasses = (...parts: Array<string | undefined | false>) => parts.filter(Boolean).join(" ");
 
 export const SelectMenu = ({
   value,
@@ -21,6 +25,8 @@ export const SelectMenu = ({
   ariaLabel,
   onChange,
   placeholder = "Select",
+  className,
+  panelClassName,
 }: SelectMenuProps) => {
   const [open, setOpen] = useState(false);
   const [placement, setPlacement] = useState<"bottom" | "top">("bottom");
@@ -68,7 +74,12 @@ export const SelectMenu = ({
 
   return (
     <div
-      className={`select-menu${open ? " open" : ""}${placement === "top" ? " top" : ""}`}
+      className={joinClasses(
+        "select-menu",
+        open && "open",
+        placement === "top" && "top",
+        className
+      )}
       ref={menuRef}
     >
       <button
@@ -85,7 +96,7 @@ export const SelectMenu = ({
       </button>
       {open && (
         <div
-          className="select-panel"
+          className={joinClasses("select-panel", panelClassName)}
           role="listbox"
           aria-label={ariaLabel}
           ref={panelRef}

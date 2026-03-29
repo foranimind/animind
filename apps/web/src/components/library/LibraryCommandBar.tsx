@@ -21,7 +21,7 @@ export const LibraryCommandBar = ({
   onQueryChange,
   onOpenFilters,
 }: LibraryCommandBarProps) => (
-  <div className="library-command">
+  <section className="library-command" aria-label="作品命令条">
     <div className="library-command-bar">
       <label className="library-command-search">
         <span className="sr-only">搜索作品</span>
@@ -72,5 +72,5 @@ export const LibraryCommandBar = ({
         ))}
       </div>
     ) : null}
-  </div>
+  </section>
 );

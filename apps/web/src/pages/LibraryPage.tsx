@@ -4,6 +4,9 @@ import { LibraryCommandBar } from "../components/library/LibraryCommandBar";
 import { LibraryFilterDrawer } from "../components/library/LibraryFilterDrawer";
 import type { FilterOption } from "../components/library/LibraryFilters";
 import { WorkCard } from "../components/library/WorkCard";
+import { ActionButton } from "../components/ui/ActionButton";
+import { PageHeader } from "../components/ui/PageHeader";
+import { SurfacePanel } from "../components/ui/SurfacePanel";
 import { useRecentWorks } from "../hooks/useRecentWorks";
 import { useResourceMap } from "../hooks/useResourceMap";
 import { fetchManifest } from "../lib/api";
@@ -11,6 +14,7 @@ import { toErrorMessage } from "../lib/errors";
 import { getManifestSummary } from "../lib/manifestAssets";
 import { removeWork } from "../lib/storage";
 import "./pages.css";
+import "./library.css";
 import "../components/library/library.css";
 
 type WorkSummary = {
@@ -214,13 +218,13 @@ export const LibraryPage = () => {
 
   return (
     <div className="page library-page">
-      <header className="page-header library-header">
-        <div className="library-title-block">
-          <h1 className="page-title">我的作品</h1>
-          <p className="page-subtitle">本地保存的最近作品。</p>
-        </div>
-        <div className="library-count">共 {filteredWorks.length} 条</div>
-      </header>
+      <PageHeader
+        eyebrow="Archive Gallery"
+        title="我的作品"
+        description="以画廊节奏浏览本地保存的最近作品。"
+        accessory={<div className="library-count">共 {filteredWorks.length} 件作品</div>}
+        className="library-header"
+      />
       <LibraryCommandBar
         query={query}
         filterCount={filterCount}
@@ -230,15 +234,23 @@ export const LibraryPage = () => {
         onOpenFilters={() => setFiltersOpen(true)}
       />
       {filteredWorks.length === 0 ? (
-        <div className="library-empty">
-          <div className="library-empty-title">暂无匹配结果</div>
-          <div className="library-empty-subtitle">调整筛选条件或开始新的创作。</div>
-          <a className="library-empty-action" href="/">
+        <SurfacePanel
+          tone="muted"
+          className="library-empty"
+          bodyClassName="library-empty-body"
+          header={
+            <div className="library-empty-header">
+              <div className="library-empty-title">暂无匹配结果</div>
+              <div className="library-empty-subtitle">调整筛选条件或开始新的创作。</div>
+            </div>
+          }
+        >
+          <ActionButton href="/" variant="ghost" className="library-empty-action">
             开始创作
-          </a>
-        </div>
+          </ActionButton>
+        </SurfacePanel>
       ) : (
-        <div className="library-grid">
+        <div className="library-grid" aria-label="作品归档画廊">
           {filteredWorks.map((work) => (
             <WorkCard
               key={work.jobId}

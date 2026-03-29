@@ -1,3 +1,4 @@
+import { ActionButton } from "../ui/ActionButton";
 import { SelectMenu, type SelectOption } from "../ui/SelectMenu";
 
 export type FilterOption = SelectOption;
@@ -34,6 +35,8 @@ export const LibraryFilters = ({
         value={style}
         options={styleOptions}
         ariaLabel="风格"
+        className="library-filter-select"
+        panelClassName="library-filter-select-panel"
         onChange={onStyleChange}
       />
     </label>
@@ -43,6 +46,8 @@ export const LibraryFilters = ({
         value={duration}
         options={durationOptions}
         ariaLabel="时长"
+        className="library-filter-select"
+        panelClassName="library-filter-select-panel"
         onChange={onDurationChange}
       />
     </label>
@@ -52,13 +57,15 @@ export const LibraryFilters = ({
         value={date}
         options={dateOptions}
         ariaLabel="日期"
+        className="library-filter-select"
+        panelClassName="library-filter-select-panel"
         onChange={onDateChange}
       />
     </label>
     <div className="library-filter-actions">
-      <button type="button" className="library-filter-clear" onClick={onClear}>
+      <ActionButton type="button" variant="ghost" className="library-filter-clear" onClick={onClear}>
         清空筛选
-      </button>
+      </ActionButton>
     </div>
   </div>
 );

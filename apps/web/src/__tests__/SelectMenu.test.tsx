@@ -5,6 +5,32 @@ import { describe, expect, it, vi } from "vitest";
 import { SelectMenu } from "../components/ui/SelectMenu";
 
 describe("SelectMenu", () => {
+  it("applies wrapper and panel class hooks", async () => {
+    const user = userEvent.setup();
+    const options = [
+      { value: "a", label: "Option A" },
+      { value: "b", label: "Option B" },
+    ];
+    const { container } = render(
+      <SelectMenu
+        value="a"
+        options={options}
+        ariaLabel="Classy select"
+        className="library-filter-select"
+        panelClassName="library-filter-select-panel"
+        onChange={vi.fn()}
+      />
+    );
+
+    expect(container.querySelector(".select-menu")).toHaveClass("library-filter-select");
+
+    await user.click(screen.getByRole("button", { name: "Classy select" }));
+
+    expect(screen.getByRole("listbox", { name: "Classy select" })).toHaveClass(
+      "library-filter-select-panel"
+    );
+  });
+
   it("closes on Escape and outside click", async () => {
     const user = userEvent.setup();
     const options = [
