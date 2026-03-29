@@ -127,6 +127,13 @@ export type SessionUiState = {
   activeTab: "preview" | "assets" | "export";
 };
 
+export type SessionRecovery = {
+  reason: "error" | "canceled";
+  message?: string;
+  stage?: string;
+  updatedAt: string;
+};
+
 export type SessionDetail = {
   id: string;
   createdAt: string;
@@ -134,6 +141,7 @@ export type SessionDetail = {
   status: SessionStatus;
   jobId?: string;
   lastPrompt?: string;
+  recovery?: SessionRecovery;
   messages: SessionMessage[];
   draft: string;
   options: SessionOptions;
@@ -216,6 +224,19 @@ const isSessionUiState = (value: unknown): value is SessionUiState => {
   );
 };
 
+const isSessionRecovery = (value: unknown): value is SessionRecovery => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    (record.reason === "error" || record.reason === "canceled") &&
+    typeof record.updatedAt === "string" &&
+    (record.message === undefined || typeof record.message === "string") &&
+    (record.stage === undefined || typeof record.stage === "string")
+  );
+};
+
 const isSessionIndexItem = (value: unknown): value is SessionIndexItem => {
   if (!value || typeof value !== "object") {
     return false;
@@ -282,6 +303,7 @@ const safeParseSessionDetail = (value: string | null): SessionDetail | null => {
       status: record.status,
       jobId: typeof record.jobId === "string" ? record.jobId : undefined,
       lastPrompt: typeof record.lastPrompt === "string" ? record.lastPrompt : undefined,
+      recovery: isSessionRecovery(record.recovery) ? record.recovery : undefined,
       messages,
       draft: record.draft,
       options: record.options,

@@ -73,6 +73,7 @@ export const buildDefaultSessionDetail = (sessionId: string, createdAt: string):
   createdAt,
   updatedAt: createdAt,
   status: "draft",
+  recovery: undefined,
   messages: INITIAL_MESSAGES,
   draft: "",
   options: {
