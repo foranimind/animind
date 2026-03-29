@@ -56,6 +56,7 @@ wheels/
 # Build outputs
 frontend/dist/
 frontend/build/
+*.tsbuildinfo
 *.local
 
 # Environment variables

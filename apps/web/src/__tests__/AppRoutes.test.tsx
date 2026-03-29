@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, MemoryRouter } from "react-router-dom";
 
 import { App } from "../App";
 import { buildDefaultSessionDetail } from "../lib/sessionDefaults";
@@ -37,7 +37,19 @@ describe("App routes", () => {
       expect(window.location.pathname).toBe("/jobs/job-123");
     });
 
-    expect(screen.getByRole("heading", { name: "任务运行中" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "任务进度" })).toBeInTheDocument();
     expect(screen.getByText(/job-123/)).toBeInTheDocument();
+  });
+
+  it("does not render running or delivery controls on the create route", () => {
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByText("任务进度")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "取消生成" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "导出视频" })).not.toBeInTheDocument();
   });
 });
