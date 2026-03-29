@@ -14,7 +14,10 @@ type CreateSettingsPanelProps = {
   onDurationChange: (value: number) => void;
 };
 
-const findLabel = (items: Array<{ id?: string; value?: string; label?: string; title?: string }>, value: string) =>
+const findLabel = (
+  items: Array<{ id?: string; value?: string | readonly [number, number]; label?: string; title?: string }>,
+  value: string
+) =>
   items.find((item) => item.id === value || item.value === value)?.label ??
   items.find((item) => item.id === value || item.value === value)?.title ??
   value;
