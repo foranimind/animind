@@ -17,24 +17,31 @@ type ActionButtonProps =
 const joinClasses = (...parts: Array<string | undefined | false>) => parts.filter(Boolean).join(" ");
 
 export const ActionButton = (props: ActionButtonProps) => {
-  const variant = props.variant ?? "primary";
-  const className = joinClasses("ui-button", `ui-button-${variant}`, props.className);
-
-  if ("href" in props && props.href) {
-    const { href, children, className: _className, variant: _variant, ...anchorProps } =
+  if ("href" in props) {
+    const { href, children, className, variant, ...anchorProps } =
       props as Extract<ActionButtonProps, { href: string }>;
+    const resolvedClassName = joinClasses(
+      "ui-button",
+      `ui-button-${variant ?? "primary"}`,
+      className
+    );
     return (
-      <a {...anchorProps} href={href} className={className}>
+      <a {...anchorProps} href={href} className={resolvedClassName}>
         {children}
       </a>
     );
   }
 
-  const { children, className: _className, variant: _variant, ...buttonProps } =
+  const { children, className, variant, ...buttonProps } =
     props as Extract<ActionButtonProps, { href?: undefined }>;
+  const resolvedClassName = joinClasses(
+    "ui-button",
+    `ui-button-${variant ?? "primary"}`,
+    className
+  );
   const buttonType = buttonProps.type as "button" | "submit" | "reset" | undefined;
   return (
-    <button {...buttonProps} type={buttonType ?? "button"} className={className}>
+    <button {...buttonProps} type={buttonType ?? "button"} className={resolvedClassName}>
       {children}
     </button>
   );
