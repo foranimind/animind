@@ -27,6 +27,7 @@ describe("ui primitives", () => {
       "ui-button-primary"
     );
     expect(screen.getByRole("button", { name: "次按钮" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "次按钮" })).toHaveClass("ui-button-disabled");
   });
 
   it("renders status pills and page headers with stable classes", () => {

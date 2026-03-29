@@ -35,6 +35,13 @@
   color: var(--text-primary);
 }
 
+.ui-button:disabled,
+.ui-button-disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .ui-button-primary {
   background: linear-gradient(180deg, rgba(232, 194, 122, 0.16), rgba(185, 180, 255, 0.12))
     rgba(22, 24, 39, 0.88);

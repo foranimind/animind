@@ -37,6 +37,7 @@ export const ActionButton = (props: ActionButtonProps) => {
   const resolvedClassName = joinClasses(
     "ui-button",
     `ui-button-${variant ?? "primary"}`,
+    buttonProps.disabled && "ui-button-disabled",
     className
   );
   const buttonType = buttonProps.type as "button" | "submit" | "reset" | undefined;
