@@ -1,0 +1,238 @@
+.job-run-page {
+  --page-max: 1320px;
+  gap: 24px;
+}
+
+.job-run-page .page-header-block {
+  align-items: flex-start;
+}
+
+.job-run-page .page-header-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.job-run-page .page-description {
+  margin: 0;
+  max-width: 680px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.job-run-page .page-header-accessory {
+  display: flex;
+  align-items: center;
+}
+
+.run-stage-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.84fr) minmax(0, 1.16fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.run-stage-support,
+.run-stage-main {
+  display: grid;
+  gap: 16px;
+}
+
+.run-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.run-card .surface-panel-header {
+  padding: 20px 22px 0;
+}
+
+.run-card .surface-panel-body {
+  display: grid;
+  gap: 16px;
+  padding: 18px 22px 22px;
+}
+
+.run-card-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.run-card-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.run-stage-pill,
+.run-preview-id {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.run-progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+}
+
+.run-progress-row strong {
+  font-family: "Newsreader", serif;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1;
+}
+
+.run-progress-row span {
+  color: var(--text-secondary);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.run-progress-track {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.run-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(232, 194, 122, 0.9), rgba(185, 180, 255, 0.94));
+}
+
+.run-meta-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.run-meta-grid div {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.run-meta-grid dt {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.run-meta-grid dd {
+  margin: 8px 0 0;
+  color: var(--text-primary);
+}
+
+.run-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  color: var(--text-secondary);
+}
+
+.run-log-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  line-height: 1.5;
+}
+
+.run-log-list li::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-top: 0.45rem;
+  border-radius: 999px;
+  background: rgba(232, 194, 122, 0.9);
+  box-shadow: 0 0 0 4px rgba(232, 194, 122, 0.12);
+  flex: 0 0 auto;
+}
+
+.run-action-bar .surface-panel-body {
+  padding-top: 10px;
+}
+
+.run-action-bar .ui-button {
+  width: fit-content;
+}
+
+.run-preview-pane {
+  min-height: 100%;
+}
+
+.run-preview-pane .surface-panel-body {
+  min-height: 460px;
+}
+
+.run-preview-stage {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  gap: 16px;
+  padding: 28px;
+  border-radius: 20px;
+  border: 1px dashed rgba(232, 194, 122, 0.2);
+  background:
+    radial-gradient(circle at top, rgba(185, 180, 255, 0.12), transparent 45%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+  text-align: center;
+}
+
+.run-preview-link {
+  min-width: 196px;
+}
+
+.run-preview-empty {
+  max-width: 24rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+@media (max-width: 960px) {
+  .run-stage-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .run-stage-main {
+    order: -1;
+  }
+
+  .run-preview-pane .surface-panel-body {
+    min-height: 320px;
+  }
+}
+
+@media (max-width: 720px) {
+  .job-run-page .page-header-block,
+  .run-card-heading,
+  .run-progress-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .run-meta-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .run-card .surface-panel-header,
+  .run-card .surface-panel-body {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}

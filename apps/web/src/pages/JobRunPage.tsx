@@ -1,3 +1,6 @@
+import "./pages.css";
+import "./run.css";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -5,6 +8,8 @@ import { RunActionBar } from "../components/run/RunActionBar";
 import { RunLogPanel } from "../components/run/RunLogPanel";
 import { RunPreviewPane } from "../components/run/RunPreviewPane";
 import { RunTimelinePanel } from "../components/run/RunTimelinePanel";
+import { PageHeader } from "../components/ui/PageHeader";
+import { StatusPill } from "../components/ui/StatusPill";
 import { useJobRunner } from "../hooks/useJobRunner";
 import { cancelJob } from "../lib/api";
 import {
@@ -14,6 +19,7 @@ import {
   setActiveSessionId,
 } from "../lib/storage";
 import { resolveJobStageLabel } from "../lib/status";
+import type { StatusTone } from "../lib/status";
 
 const EMPTY_OPTIONS = {};
 const TERMINAL_DONE = new Set(["DONE", "COMPLETED"]);
@@ -131,6 +137,16 @@ export const JobRunPage = () => {
 
   const normalizedStatus = jobStatus?.status?.toUpperCase() ?? "";
   const canCancel = !TERMINAL_DONE.has(normalizedStatus) && !TERMINAL_ERROR.has(normalizedStatus) && !TERMINAL_CANCELED.has(normalizedStatus);
+  const statusTone: StatusTone = !normalizedStatus
+    ? "idle"
+    : canCancel
+      ? "loading"
+      : TERMINAL_DONE.has(normalizedStatus)
+        ? "ready"
+        : TERMINAL_ERROR.has(normalizedStatus) || TERMINAL_CANCELED.has(normalizedStatus)
+          ? "error"
+          : "warning";
+  const statusLabel = resolveJobStageLabel(jobStatus?.stage, normalizedStatus || jobStatus?.status);
   const logLines =
     jobStatus?.logs_tail && jobStatus.logs_tail.length > 0
       ? jobStatus.logs_tail
@@ -140,8 +156,15 @@ export const JobRunPage = () => {
 
   return (
     <div className="page job-run-page">
-      <div className="job-run-shell">
-        <div className="job-run-process-column">
+      <PageHeader
+        eyebrow="Execution Theater"
+        title="执行剧场"
+        description="预览占据主舞台，进度、日志与控制作为配套叙事面板持续更新。"
+        accessory={<StatusPill tone={statusTone}>{statusLabel}</StatusPill>}
+      />
+
+      <div className="run-stage-layout">
+        <section className="run-stage-support" aria-label="执行进度">
           <RunTimelinePanel status={jobStatus} />
           <RunLogPanel lines={logLines} />
           <RunActionBar
@@ -149,11 +172,11 @@ export const JobRunPage = () => {
             isCanceling={isCanceling}
             onCancel={handleCancel}
           />
-        </div>
+        </section>
 
-        <div className="job-run-preview-column">
+        <section className="run-stage-main" aria-label="预览舞台">
           <RunPreviewPane jobId={id} status={jobStatus} />
-        </div>
+        </section>
       </div>
     </div>
   );

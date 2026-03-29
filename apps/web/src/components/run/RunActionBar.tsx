@@ -1,3 +1,6 @@
+import { ActionButton } from "../ui/ActionButton";
+import { SurfacePanel } from "../ui/SurfacePanel";
+
 type RunActionBarProps = {
   canCancel: boolean;
   isCanceling: boolean;
@@ -9,18 +12,17 @@ export const RunActionBar = ({
   isCanceling,
   onCancel,
 }: RunActionBarProps) => (
-  <section className="run-panel run-action-bar">
-    <div className="run-panel-header">
-      <h2>控制</h2>
-    </div>
-
-    <button
-      type="button"
-      className="danger-button"
+  <SurfacePanel
+    tone="muted"
+    className="run-card run-action-bar"
+    header={<h2 className="run-card-title">控制</h2>}
+  >
+    <ActionButton
       disabled={!canCancel || isCanceling}
       onClick={onCancel}
+      variant="danger"
     >
       {isCanceling ? "取消中..." : "取消生成"}
-    </button>
-  </section>
+    </ActionButton>
+  </SurfacePanel>
 );

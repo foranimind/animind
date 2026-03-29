@@ -1,5 +1,6 @@
 import type { JobStatus } from "../../types/job";
 import { resolveJobStageLabel } from "../../lib/status";
+import { SurfacePanel } from "../ui/SurfacePanel";
 
 type RunTimelinePanelProps = {
   status: JobStatus | null;
@@ -13,12 +14,15 @@ export const RunTimelinePanel = ({ status }: RunTimelinePanelProps) => {
   const stageLabel = resolveJobStageLabel(status?.stage, status?.status);
 
   return (
-    <section className="run-panel run-timeline-panel">
-      <div className="run-panel-header">
-        <h2>任务进度</h2>
-        <span className="run-stage-pill">{stageLabel}</span>
-      </div>
-
+    <SurfacePanel
+      className="run-card run-timeline-panel"
+      header={
+        <div className="run-card-heading">
+          <h2 className="run-card-title">任务进度</h2>
+          <span className="run-stage-pill">{stageLabel}</span>
+        </div>
+      }
+    >
       <div className="run-progress-row">
         <strong>{progressValue}%</strong>
         <span>{status?.status ?? "等待中"}</span>
@@ -38,6 +42,6 @@ export const RunTimelinePanel = ({ status }: RunTimelinePanelProps) => {
           <dd>{stageLabel}</dd>
         </div>
       </dl>
-    </section>
+    </SurfacePanel>
   );
 };
