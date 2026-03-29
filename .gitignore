@@ -169,3 +169,5 @@ runtime/
 # AI
 .agents/
 .codex/
+.superpowers/
+.worktrees/
