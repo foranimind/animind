@@ -1,10 +1,18 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
+import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 if __package__ == "uir":
     # Support `import uir` when `services/orchestrator/src` is added to sys.path.
+    _SRC_ROOT = str(Path(__file__).resolve().parents[1])
+    try:
+        sys.path.remove(_SRC_ROOT)
+    except ValueError:
+        pass
+    sys.path.insert(0, _SRC_ROOT)
     from config.providers import get_default_provider
 else:
     from ..config.providers import get_default_provider

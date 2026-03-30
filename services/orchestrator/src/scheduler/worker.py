@@ -103,7 +103,24 @@ async def _run_job(store: JobStore, job_id: str) -> None:
                 await reporter.status(stage, end, f"{modality} skipped")
                 _write_manifest(store, job_id, stage.value, [])
                 continue
-            provider_id = _resolve_provider_id(job.uir, modality)
+            try:
+                provider_id = _resolve_provider_id(job.uir, modality)
+            except ValueError as exc:
+                error = build_error(
+                    "E_VALIDATION_CONFIG",
+                    "provider configuration invalid",
+                    detail={"error": str(exc), "modality": modality},
+                    retryable=False,
+                )
+                await _fail_job(
+                    store,
+                    reporter,
+                    job_id,
+                    _current_progress(store, job_id, start),
+                    f"{modality} configuration invalid",
+                    error,
+                )
+                return
             if not provider_id:
                 error = build_error(
                     "E_VALIDATION_ROUTING",

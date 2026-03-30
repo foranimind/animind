@@ -1,12 +1,18 @@
+import asyncio
 from contextlib import contextmanager
 import os
 from pathlib import Path
 import subprocess
 import sys
+from tempfile import TemporaryDirectory
 import textwrap
 import unittest
 
 from services.orchestrator.src.config.providers import get_provider_profile
+from services.orchestrator.src.scheduler.events import EVENT_BUS
+from services.orchestrator.src.scheduler.models import JobStatus
+from services.orchestrator.src.scheduler.store import JobStore
+from services.orchestrator.src.scheduler.worker import _run_job
 from services.orchestrator.src.uir.builder import build_uir_from_prompt
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,6 +44,27 @@ def orch_provider_env(**overrides):
         for key, value in previous.items():
             if value is not None:
                 os.environ[key] = value
+
+
+def _scene_only_uir(job_id: str = "job_invalid_mode") -> dict:
+    return {
+        "uir_version": "1.0",
+        "job": {"id": job_id, "created_at": "2025-12-20T00:00:00Z"},
+        "input": {"raw_prompt": "test prompt", "lang": "en"},
+        "intent": {"targets": ["scene"], "duration_s": 12},
+        "modules": {
+            "scene": {
+                "enabled": True,
+                "prompt": "panorama scene",
+                "resolution": [2048, 1024],
+            },
+            "motion": {"enabled": False},
+            "music": {"enabled": False},
+            "character": {"enabled": False},
+            "preview": {"enabled": False},
+            "export": {"enabled": False},
+        },
+    }
 
 
 class TestProviderConfig(unittest.TestCase):
@@ -104,3 +131,67 @@ class TestProviderConfig(unittest.TestCase):
             0,
             msg=completed.stderr or completed.stdout,
         )
+
+    def test_top_level_uir_import_prefers_repo_sibling_config_package(self):
+        with TemporaryDirectory() as conflict_root:
+            conflict_config = Path(conflict_root) / "config"
+            conflict_config.mkdir(parents=True, exist_ok=True)
+            (conflict_config / "__init__.py").write_text("", encoding="utf-8")
+            (conflict_config / "providers.py").write_text(
+                "raise RuntimeError('foreign config imported')\n",
+                encoding="utf-8",
+            )
+            script = textwrap.dedent(
+                f"""
+                import importlib
+                import sys
+
+                sys.path[:] = [r"{conflict_root}", r"{SRC_ROOT}"] + sys.path
+                module = importlib.import_module("uir")
+                assert callable(module.build_uir_from_prompt)
+                """
+            )
+            completed = subprocess.run(
+                [sys.executable, "-c", script],
+                capture_output=True,
+                text=True,
+                check=False,
+                env={key: value for key, value in os.environ.items() if key not in _ORCH_ENV_KEYS},
+            )
+            self.assertEqual(
+                completed.returncode,
+                0,
+                msg=completed.stderr or completed.stdout,
+            )
+
+
+class TestProviderConfigWorker(unittest.IsolatedAsyncioTestCase):
+    async def test_invalid_execution_mode_fails_as_non_retryable_config_error(self):
+        with TemporaryDirectory() as temp_dir:
+            previous_runtime_dir = os.environ.get("ORCH_RUNTIME_DIR")
+            os.environ["ORCH_RUNTIME_DIR"] = temp_dir
+            try:
+                with orch_provider_env(ORCH_EXECUTION_MODE="relai"):
+                    store = JobStore()
+                    job = store.create_job(_scene_only_uir())
+                    queue = await EVENT_BUS.subscribe(job.job_id)
+                    try:
+                        await _run_job(store, job.job_id)
+                        failed_event = None
+                        while True:
+                            event = await asyncio.wait_for(queue.get(), timeout=1.0)
+                            if event["event"] == "failed":
+                                failed_event = event
+                                break
+                        self.assertIsNotNone(failed_event)
+                        data = failed_event["data"]
+                        self.assertEqual(data["status"], JobStatus.FAILED.value)
+                        self.assertEqual(data["payload"]["code"], "E_VALIDATION_CONFIG")
+                        self.assertFalse(data["payload"]["retryable"])
+                    finally:
+                        await EVENT_BUS.unsubscribe(job.job_id, queue)
+            finally:
+                if previous_runtime_dir is None:
+                    os.environ.pop("ORCH_RUNTIME_DIR", None)
+                else:
+                    os.environ["ORCH_RUNTIME_DIR"] = previous_runtime_dir
