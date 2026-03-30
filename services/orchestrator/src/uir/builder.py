@@ -3,7 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from ..config.providers import get_default_provider
+if __package__ == "uir":
+    # Support `import uir` when `services/orchestrator/src` is added to sys.path.
+    from config.providers import get_default_provider
+else:
+    from ..config.providers import get_default_provider
 from .models import KNOWN_MODULES
 
 _DEFAULT_TARGETS = ("scene", "motion", "music", "preview", "export")
