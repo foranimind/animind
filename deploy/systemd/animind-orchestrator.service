@@ -1,0 +1,16 @@
+[Unit]
+Description=Animind Orchestrator
+After=network.target
+
+[Service]
+Type=simple
+User=animind
+Group=animind
+WorkingDirectory=/srv/animind/app
+EnvironmentFile=/etc/animind/animind.orchestrator.env
+ExecStart=/usr/bin/python3 -m uvicorn services.orchestrator.src.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
