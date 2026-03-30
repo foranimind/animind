@@ -119,21 +119,23 @@ export const WorkCard = ({
         >
           ...
         </button>
-        <div className={`work-card-menu${menuOpen ? " open" : ""}`} role="menu">
-          <button
-            type="button"
-            className="work-card-menu-item"
-            role="menuitem"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setMenuOpen(false);
-              onRemove(jobId);
-            }}
-          >
-            移除
-          </button>
-        </div>
+        {menuOpen ? (
+          <div className="work-card-menu open" role="menu">
+            <button
+              type="button"
+              className="work-card-menu-item"
+              role="menuitem"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setMenuOpen(false);
+                onRemove(jobId);
+              }}
+            >
+              移除
+            </button>
+          </div>
+        ) : null}
       </div>
     </article>
   );

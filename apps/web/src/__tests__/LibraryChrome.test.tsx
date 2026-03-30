@@ -17,4 +17,11 @@ describe("LibraryPage chrome", () => {
     expect(screen.getByRole("dialog", { name: "作品筛选" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "关闭筛选" })).toBeInTheDocument();
   });
+
+  it("does not mount filter drawer controls while closed", () => {
+    const { container } = render(<LibraryPage />);
+
+    expect(container.querySelector(".library-drawer-close")).toBeNull();
+    expect(container.querySelector(".library-filter-panel")).toBeNull();
+  });
 });

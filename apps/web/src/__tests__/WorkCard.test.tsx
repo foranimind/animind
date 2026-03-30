@@ -26,6 +26,18 @@ describe("WorkCard", () => {
     expect(container.querySelector(".work-card-menu.open")).toBeFalsy();
   });
 
+  it("does not mount action menu items until opened", () => {
+    const { container } = render(
+      <WorkCard
+        jobId="job-1"
+        title="Test work"
+        onRemove={vi.fn()}
+      />
+    );
+
+    expect(container.querySelectorAll(".work-card-menu-item")).toHaveLength(0);
+  });
+
   it("renders status label and tone for completed work", () => {
     render(
       <WorkCard

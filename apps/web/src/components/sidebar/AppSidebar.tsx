@@ -328,46 +328,51 @@ export const AppSidebar = () => {
                   >
                     ...
                   </button>
-                  <div className={`session-menu${isMenuOpen ? " open" : ""}`} role="menu">
-                    <button
-                      type="button"
-                      className="session-menu-item"
-                      role="menuitem"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        startRename(session.id, session.title);
-                      }}
+                  {isMenuOpen ? (
+                    <div
+                      className="session-menu open"
+                      role="menu"
                     >
-                      重命名
-                    </button>
-                    <button
-                      type="button"
-                      className="session-menu-item"
-                      role="menuitem"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        setMenuOpenId(null);
-                        setSessionPinned(session.id, !session.pinned);
-                      }}
-                    >
-                      {session.pinned ? "取消置顶" : "置顶"}
-                    </button>
-                    <button
-                      type="button"
-                      className="session-menu-item"
-                      role="menuitem"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        setMenuOpenId(null);
-                        handleRemoveSession(session.id);
-                      }}
-                    >
-                      删除
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        className="session-menu-item"
+                        role="menuitem"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          startRename(session.id, session.title);
+                        }}
+                      >
+                        重命名
+                      </button>
+                      <button
+                        type="button"
+                        className="session-menu-item"
+                        role="menuitem"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setMenuOpenId(null);
+                          setSessionPinned(session.id, !session.pinned);
+                        }}
+                      >
+                        {session.pinned ? "取消置顶" : "置顶"}
+                      </button>
+                      <button
+                        type="button"
+                        className="session-menu-item"
+                        role="menuitem"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setMenuOpenId(null);
+                          handleRemoveSession(session.id);
+                        }}
+                      >
+                        删除
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               );
 

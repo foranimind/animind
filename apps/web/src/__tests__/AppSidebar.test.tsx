@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MemoryRouter } from "react-router-dom";
@@ -132,6 +133,97 @@ describe("AppSidebar", () => {
     );
 
     expect(screen.getByRole("button", { name: "Delivered scene" })).not.toHaveClass("active");
+  });
+
+  it("does not mount session menu items until a menu is opened", () => {
+    const now = new Date().toISOString();
+    const detail = buildDefaultSessionDetail("sess-draft", now);
+    detail.lastPrompt = "Draft scene";
+
+    saveSessionDetail(detail);
+    setActiveSessionId(detail.id);
+
+    const { container } = render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    expect(container.querySelectorAll(".session-menu-item")).toHaveLength(0);
+  });
+
+  it("closes the first session menu when its trigger is clicked again", async () => {
+    const user = userEvent.setup();
+    const now = new Date().toISOString();
+    const first = buildDefaultSessionDetail("sess-first", now);
+    first.lastPrompt = "First scene";
+
+    const second = buildDefaultSessionDetail("sess-second", now);
+    second.lastPrompt = "Second scene";
+
+    saveSessionDetail(first);
+    saveSessionDetail(second);
+    setActiveSessionId(first.id);
+
+    const { container } = render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    const sessionButton = screen.getByRole("button", { name: "First scene" });
+    const sessionItem = sessionButton.parentElement;
+    if (!(sessionItem instanceof HTMLElement)) {
+      throw new Error("Missing session item");
+    }
+    const actions = sessionItem.querySelector(".session-actions");
+    if (!(actions instanceof HTMLElement)) {
+      throw new Error("Missing session actions");
+    }
+    const trigger = within(actions).getByRole("button", { name: "更多操作" });
+
+    await user.click(trigger);
+    expect(container.querySelector(".session-menu.open")).toBeTruthy();
+
+    await user.click(trigger);
+    expect(container.querySelector(".session-menu.open")).toBeFalsy();
+  });
+
+  it("dismisses the first session menu on outside click", async () => {
+    const user = userEvent.setup();
+    const now = new Date().toISOString();
+    const first = buildDefaultSessionDetail("sess-first", now);
+    first.lastPrompt = "First scene";
+
+    const second = buildDefaultSessionDetail("sess-second", now);
+    second.lastPrompt = "Second scene";
+
+    saveSessionDetail(first);
+    saveSessionDetail(second);
+    setActiveSessionId(first.id);
+
+    const { container } = render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    const sessionButton = screen.getByRole("button", { name: "First scene" });
+    const sessionItem = sessionButton.parentElement;
+    if (!(sessionItem instanceof HTMLElement)) {
+      throw new Error("Missing session item");
+    }
+    const actions = sessionItem.querySelector(".session-actions");
+    if (!(actions instanceof HTMLElement)) {
+      throw new Error("Missing session actions");
+    }
+    const trigger = within(actions).getByRole("button", { name: "更多操作" });
+
+    await user.click(trigger);
+    expect(container.querySelector(".session-menu.open")).toBeTruthy();
+
+    await user.click(document.body);
+    expect(container.querySelector(".session-menu.open")).toBeFalsy();
   });
 
   it("keeps the studio rail landmark and collapse control available", () => {
