@@ -137,6 +137,38 @@ class TestRelayUploadApi(unittest.TestCase):
 
         self.assertEqual(response.status_code, 422)
 
+    def test_relay_upload_rejects_ambiguous_duplicate_filenames(self) -> None:
+        app = create_app()
+        client = TestClient(app)
+        job_id = self._create_job()
+
+        response = client.post(
+            f"/api/jobs/{job_id}/relay-upload",
+            data={
+                "manifest": json.dumps(
+                    [
+                        {
+                            "role": "music_wav",
+                            "relative_path": "one/output.wav",
+                            "mime": "audio/wav",
+                        },
+                        {
+                            "role": "music_wav",
+                            "relative_path": "two/output.wav",
+                            "mime": "audio/wav",
+                        },
+                    ]
+                )
+            },
+            files=[
+                ("files", ("output.wav", io.BytesIO(b"first"), "audio/wav")),
+                ("files", ("output.wav", io.BytesIO(b"second"), "audio/wav")),
+            ],
+            headers={"X-Relay-Token": "test-token"},
+        )
+
+        self.assertEqual(response.status_code, 422)
+
 
 if __name__ == "__main__":
     unittest.main()

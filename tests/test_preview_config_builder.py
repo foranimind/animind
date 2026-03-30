@@ -9,7 +9,6 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from services.orchestrator.src.adapters.preview import PreviewConfigBuilder
-from services.orchestrator.src.scheduler.models import Job
 from services.orchestrator.src.scheduler.store import JOB_STORE
 from services.orchestrator.src.storage.job_fs import ensure_job_dirs
 
@@ -62,12 +61,9 @@ class TestPreviewConfigBuilder(unittest.TestCase):
                     "mime": "text/plain",
                 }
             ]
-            job = Job(job_id=job_id, uir=uir, assets={"artifacts": artifacts})
-
-            with JOB_STORE._lock:
-                previous_jobs = dict(JOB_STORE._jobs)
-                JOB_STORE._jobs.clear()
-                JOB_STORE._jobs[job_id] = job
+            JOB_STORE.sync_runtime()
+            JOB_STORE.create_job(uir)
+            JOB_STORE.update_job(job_id, assets={"artifacts": artifacts})
             try:
                 adapter = PreviewConfigBuilder()
                 result = adapter.run(uir, job_dir, _DummyReporter())
@@ -91,13 +87,11 @@ class TestPreviewConfigBuilder(unittest.TestCase):
                 self.assertTrue(any("music_wav" in entry for entry in warnings))
                 self.assertTrue(any("character_manifest" in entry for entry in warnings))
             finally:
-                with JOB_STORE._lock:
-                    JOB_STORE._jobs.clear()
-                    JOB_STORE._jobs.update(previous_jobs)
                 if old_runtime is None:
                     os.environ.pop("ORCH_RUNTIME_DIR", None)
                 else:
                     os.environ["ORCH_RUNTIME_DIR"] = old_runtime
+                JOB_STORE.sync_runtime()
 
 
 if __name__ == "__main__":

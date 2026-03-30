@@ -30,16 +30,12 @@ async def relay_upload(
         raise HTTPException(status_code=404, detail="job not found")
 
     entries = _parse_manifest(manifest)
-    if len(entries) != len(files):
-        raise HTTPException(status_code=422, detail="manifest/files length mismatch")
+    planned = _planned_uploads(entries, files)
 
     runtime = get_runtime_paths()
     job_root = runtime.assets_dir / job_id
     job_root.mkdir(parents=True, exist_ok=True)
-    planned = [
-        _validated_upload(job_root, entry, upload)
-        for entry, upload in zip(entries, files, strict=True)
-    ]
+    planned = [_validated_upload(job_root, entry, upload) for entry, upload in planned]
 
     artifacts: List[Dict[str, Any]] = []
     for entry, upload, relative_path, target in planned:
@@ -109,7 +105,7 @@ def _validated_upload(
         raise HTTPException(status_code=422, detail="relative_path must stay under the job directory")
     if not relative_path.name:
         raise HTTPException(status_code=422, detail="relative_path must include a filename")
-    if upload.filename != relative_path.name:
+    if Path(upload.filename or "").name != relative_path.name:
         raise HTTPException(status_code=422, detail="upload filename must match manifest relative_path")
     target = (job_root / relative_path).resolve()
     job_root_resolved = job_root.resolve()
@@ -126,3 +122,33 @@ def _merge_artifacts(existing_assets: Any, new_artifacts: List[Dict[str, Any]]) 
             merged.extend([item for item in stored if isinstance(item, dict)])
     merged.extend(new_artifacts)
     return merged
+
+
+def _planned_uploads(
+    entries: List[Dict[str, Any]], files: List[UploadFile]
+) -> List[Tuple[Dict[str, Any], UploadFile]]:
+    if len(entries) != len(files):
+        raise HTTPException(status_code=422, detail="manifest/files length mismatch")
+    uploads_by_name: Dict[str, UploadFile] = {}
+    for upload in files:
+        name = Path(upload.filename or "").name
+        if not name:
+            raise HTTPException(status_code=422, detail="upload filename is required")
+        if name in uploads_by_name:
+            raise HTTPException(status_code=422, detail="upload filenames must be unique")
+        uploads_by_name[name] = upload
+    planned: List[Tuple[Dict[str, Any], UploadFile]] = []
+    seen_manifest_names: set[str] = set()
+    for entry in entries:
+        name = Path(entry["relative_path"]).name
+        if name in seen_manifest_names:
+            raise HTTPException(
+                status_code=422,
+                detail="manifest filenames must be unique",
+            )
+        seen_manifest_names.add(name)
+        upload = uploads_by_name.get(name)
+        if upload is None:
+            raise HTTPException(status_code=422, detail="manifest/files length mismatch")
+        planned.append((entry, upload))
+    return planned

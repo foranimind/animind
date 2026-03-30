@@ -92,10 +92,12 @@ class JobStore:
 
     def get_job(self, job_id: str) -> Optional[Job]:
         with self._lock:
+            self._sync_runtime_locked()
             return self._jobs.get(job_id)
 
     def list_jobs(self, status: Optional[JobStatus] = None) -> List[Job]:
         with self._lock:
+            self._sync_runtime_locked()
             if status is None:
                 return list(self._jobs.values())
             return [job for job in self._jobs.values() if job.status == status]

@@ -75,6 +75,22 @@ class TestJobStorePersistence(unittest.TestCase):
                 else:
                     os.environ["ORCH_RUNTIME_DIR"] = old_runtime_dir
 
+    def test_global_job_store_reads_from_current_runtime_dir(self) -> None:
+        old_runtime_dir = os.environ.get("ORCH_RUNTIME_DIR")
+        with TemporaryDirectory() as first_dir, TemporaryDirectory() as second_dir:
+            try:
+                first_job_id = f"job_{uuid4().hex}"
+                os.environ["ORCH_RUNTIME_DIR"] = first_dir
+                JOB_STORE.create_job(_base_uir(first_job_id))
+
+                os.environ["ORCH_RUNTIME_DIR"] = second_dir
+                self.assertIsNone(JOB_STORE.get_job(first_job_id))
+            finally:
+                if old_runtime_dir is None:
+                    os.environ.pop("ORCH_RUNTIME_DIR", None)
+                else:
+                    os.environ["ORCH_RUNTIME_DIR"] = old_runtime_dir
+
 
 if __name__ == "__main__":
     unittest.main()
