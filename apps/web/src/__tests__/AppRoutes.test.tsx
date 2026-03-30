@@ -4,7 +4,7 @@ import { BrowserRouter, MemoryRouter } from "react-router-dom";
 
 import { App } from "../App";
 import { buildDefaultSessionDetail } from "../lib/sessionDefaults";
-import { saveSessionDetail, setActiveSessionId } from "../lib/storage";
+import { getActiveSessionId, getSessionDetail, saveSessionDetail, setActiveSessionId } from "../lib/storage";
 
 describe("App routes", () => {
   beforeEach(() => {
@@ -41,7 +41,7 @@ describe("App routes", () => {
     expect(screen.getByText(/job-123/)).toBeInTheDocument();
   });
 
-  it("keeps a completed active session on the create route instead of reopening delivery", async () => {
+  it("switches completed history back to the draft workspace on root load", async () => {
     const now = new Date().toISOString();
     const detail = buildDefaultSessionDetail("sess-done", now);
     detail.status = "done";
@@ -64,6 +64,15 @@ describe("App routes", () => {
 
     expect(screen.getByText("创作描述")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "交付结果" })).not.toBeInTheDocument();
+    const composer = screen.getByPlaceholderText("描述你的场景、光线、动作与配乐...") as HTMLTextAreaElement;
+    expect(composer.value).toBe("");
+    expect(screen.queryByDisplayValue("Completed scene")).not.toBeInTheDocument();
+    await waitFor(() => {
+      const activeSessionId = getActiveSessionId();
+      expect(activeSessionId).toBeTruthy();
+      expect(activeSessionId).not.toBe(detail.id);
+      expect(getSessionDetail(activeSessionId ?? "")?.status).toBe("draft");
+    });
   });
 
   it("does not render running or delivery controls on the create route", () => {

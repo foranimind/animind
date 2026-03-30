@@ -18,6 +18,35 @@ body {
   box-sizing: border-box;
 }
 
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size, 8px);
+  height: var(--scrollbar-size, 8px);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track, rgba(12, 18, 26, 0.6));
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb, rgba(125, 167, 255, 0.6));
+  border-radius: 999px;
+  border: 2px solid var(--scrollbar-track-border, rgba(12, 18, 26, 0.8));
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover, rgba(154, 176, 255, 0.75));
+}
+
+@supports (-moz-appearance: none) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb, rgba(125, 167, 255, 0.6))
+      var(--scrollbar-track, rgba(12, 18, 26, 0.6));
+  }
+}
+
 a,
 button,
 input,

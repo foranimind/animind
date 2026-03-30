@@ -117,7 +117,13 @@ export const WorkCard = ({
             setMenuOpen((prev) => !prev);
           }}
         >
-          ...
+          <span className="work-card-action-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20">
+              <circle cx="5" cy="10" r="1.4" fill="currentColor" />
+              <circle cx="10" cy="10" r="1.4" fill="currentColor" />
+              <circle cx="15" cy="10" r="1.4" fill="currentColor" />
+            </svg>
+          </span>
         </button>
         {menuOpen ? (
           <div className="work-card-menu open" role="menu">

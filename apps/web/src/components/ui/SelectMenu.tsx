@@ -96,7 +96,7 @@ export const SelectMenu = ({
       </button>
       {open && (
         <div
-          className={joinClasses("select-panel", panelClassName)}
+          className={joinClasses("select-panel", "ui-scrollbar", panelClassName)}
           role="listbox"
           aria-label={ariaLabel}
           ref={panelRef}
@@ -114,7 +114,7 @@ export const SelectMenu = ({
                 setOpen(false);
               }}
             >
-              <span>{option.label}</span>
+              <span className="select-option-label">{option.label}</span>
             </button>
           ))}
         </div>

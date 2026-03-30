@@ -9,9 +9,12 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { useDismissable } from "../../hooks/useDismissable";
 import { useSessions } from "../../hooks/useSessions";
-import { createNewSession } from "../../lib/sessionActions";
+import { createNewSession, ensureDraftSession } from "../../lib/sessionActions";
 import {
+  findLatestDraftSessionDetail,
   getActiveSessionId,
+  getDraftSessionDetail,
+  hasMeaningfulDraftContent,
   listEmptySessions,
   removeSession,
   renameSession,
@@ -31,6 +34,7 @@ export const AppSidebar = () => {
   const navigate = useNavigate();
   const activeSessionId = getActiveSessionId();
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [isDraftResetOpen, setIsDraftResetOpen] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -51,25 +55,29 @@ export const AppSidebar = () => {
     if (activeSessionId) {
       return;
     }
-    if (items.length > 0) {
-      const next = items[0];
-      touchSession(next.id);
-      setActiveSessionId(next.id);
-      return;
-    }
-    createNewSession();
+    ensureDraftSession();
   }, [activeSessionId, items]);
 
   const handleNewProject = () => {
     const emptySessions = listEmptySessions();
-    if (emptySessions.length > 0 && typeof globalThis.confirm === "function") {
-      const shouldClean = globalThis.confirm(
-        `检测到 ${emptySessions.length} 个空项目，是否清理后再新建？`
-      );
-      if (shouldClean) {
-        emptySessions.forEach((session) => removeSession(session.id));
-      }
+    emptySessions.forEach((session) => removeSession(session.id));
+    const currentDraft = getDraftSessionDetail() ?? findLatestDraftSessionDetail();
+    if (currentDraft && hasMeaningfulDraftContent(currentDraft)) {
+      setIsDraftResetOpen(true);
+      return;
     }
+    setMenuOpenId(null);
+    setRenamingId(null);
+    ensureDraftSession();
+    navigate("/");
+  };
+
+  const handleConfirmDraftReset = () => {
+    const currentDraft = getDraftSessionDetail() ?? findLatestDraftSessionDetail();
+    if (currentDraft) {
+      removeSession(currentDraft.id);
+    }
+    setIsDraftResetOpen(false);
     setMenuOpenId(null);
     setRenamingId(null);
     createNewSession();
@@ -167,7 +175,8 @@ export const AppSidebar = () => {
     const jobId = decodeURIComponent(rawJobId);
     return items.find((item) => item.jobId === jobId)?.id ?? null;
   })();
-  const highlightedSessionId = isJobRoute || isDeliveryRoute ? routeSessionId : null;
+  const highlightedSessionId =
+    isJobRoute || isDeliveryRoute ? routeSessionId : null;
   const resolvedHighlightedSessionId = items.some((item) => item.id === highlightedSessionId)
     ? highlightedSessionId
     : null;
@@ -211,6 +220,11 @@ export const AppSidebar = () => {
           className={() => `sidebar-link ${isCreateNavActive ? "active" : ""}`}
           aria-label="创作"
           title="创作"
+          onClick={() => {
+            setMenuOpenId(null);
+            setRenamingId(null);
+            ensureDraftSession();
+          }}
         >
           <span className="sidebar-link-icon" aria-hidden="true">
             <svg viewBox="0 0 20 20">
@@ -256,7 +270,7 @@ export const AppSidebar = () => {
 
       <section className="sidebar-session-region" aria-label="最近项目">
         <div className="sidebar-list-header">最近项目</div>
-        <div className={`sidebar-list-body${menuOpenId ? " menu-open" : ""}`}>
+        <div className={`sidebar-list-body ui-scrollbar${menuOpenId ? " menu-open" : ""}`}>
           {items.length === 0 ? (
             <div className="sidebar-empty">暂无项目</div>
           ) : (
@@ -326,7 +340,13 @@ export const AppSidebar = () => {
                       setMenuOpenId((prev) => (prev === session.id ? null : session.id));
                     }}
                   >
-                    ...
+                    <span className="session-action-icon" aria-hidden="true">
+                      <svg viewBox="0 0 20 20">
+                        <circle cx="5" cy="10" r="1.4" fill="currentColor" />
+                        <circle cx="10" cy="10" r="1.4" fill="currentColor" />
+                        <circle cx="15" cy="10" r="1.4" fill="currentColor" />
+                      </svg>
+                    </span>
                   </button>
                   {isMenuOpen ? (
                     <div
@@ -396,6 +416,39 @@ export const AppSidebar = () => {
           )}
         </div>
       </section>
+
+      {isDraftResetOpen ? (
+        <div className="project-reset-dialog" role="dialog" aria-modal="true" aria-label="开始新的草稿">
+          <button
+            type="button"
+            className="project-reset-overlay"
+            aria-label="关闭新建草稿提示"
+            onClick={() => setIsDraftResetOpen(false)}
+          />
+          <div className="project-reset-panel">
+            <div className="project-reset-title">开始新的草稿</div>
+            <p className="project-reset-copy">
+              当前创作台里还有未提交的内容。继续新建会清空它，并切换到一张新的空白草稿。
+            </p>
+            <div className="project-reset-actions">
+              <button
+                type="button"
+                className="ui-button ui-button-ghost project-reset-cancel"
+                onClick={() => setIsDraftResetOpen(false)}
+              >
+                继续编辑
+              </button>
+              <button
+                type="button"
+                className="ui-button ui-button-primary project-reset-confirm"
+                onClick={handleConfirmDraftReset}
+              >
+                新建草稿
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="sidebar-footer">
         <button

@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import { CreatePage } from "../pages/CreatePage";
 import { buildDefaultSessionDetail } from "../lib/sessionDefaults";
-import { getActiveSessionId, saveSessionDetail, setActiveSessionId } from "../lib/storage";
+import { getActiveSessionId, getSessionDetail, saveSessionDetail, setActiveSessionId } from "../lib/storage";
 
 const { navigateSpy, createJobSpy } = vi.hoisted(() => ({
   navigateSpy: vi.fn(),
@@ -96,6 +96,15 @@ describe("CreatePage recovery", () => {
     expect(screen.getByRole("complementary", { name: "创作设置" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "开始生成" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "开始生成" })).toHaveClass("prompt-composer-submit");
+    expect(screen.getByRole("button", { name: "风格" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "情绪" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "风格" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "情绪" })).not.toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "时长 14s" })).toHaveClass("ui-range");
+    expect(screen.getByText("全景 2K")).toBeInTheDocument();
+    expect(screen.getByText("2048×1024")).toBeInTheDocument();
+    expect(screen.getByText("1080p")).toBeInTheDocument();
+    expect(screen.getByText("1920×1080")).toBeInTheDocument();
   });
 
   it("places recovered context before the composer in document order when recovery exists", async () => {
@@ -149,6 +158,55 @@ describe("CreatePage recovery", () => {
     expect(composer).toHaveValue("镜头：");
     expect(screen.getByRole("button", { name: "镜头" }).closest(".prompt-composer-panel")).toBeTruthy();
     expect(container.querySelector(".create-desk-layout > .prompt-helper-bar")).toBeNull();
+  });
+
+  it("keeps prompt helpers and submit action in the same footer group", async () => {
+    render(
+      <MemoryRouter>
+        <CreatePage />
+      </MemoryRouter>
+    );
+
+    const submitButton = await screen.findByRole("button", { name: "开始生成" });
+    const footer = submitButton.closest(".prompt-composer-footer");
+
+    expect(footer).toBeTruthy();
+    expect(footer?.querySelector(".prompt-helper-bar")).toBeTruthy();
+    expect(footer?.querySelector(".prompt-composer-actions")).toBeTruthy();
+  });
+
+  it("only reserves the recovery layout row when recovery content exists", async () => {
+    const { container, rerender } = render(
+      <MemoryRouter>
+        <CreatePage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("region", { name: "创作主区" })).toBeInTheDocument();
+    expect(container.querySelector(".create-desk-layout")?.classList.contains("has-recovery")).toBe(false);
+
+    const now = new Date().toISOString();
+    const detail = buildDefaultSessionDetail("sess_recovery_layout", now);
+    detail.status = "canceled";
+    detail.draft = "restored draft";
+    detail.lastPrompt = detail.draft;
+    detail.recovery = {
+      reason: "canceled",
+      message: "恢复布局",
+      updatedAt: now,
+    };
+    saveSessionDetail(detail);
+    setActiveSessionId(detail.id);
+
+    rerender(
+      <MemoryRouter>
+        <CreatePage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector(".create-desk-layout")?.classList.contains("has-recovery")).toBe(true);
+    });
   });
 
   it("updates to the newly active draft session while already on the create route", async () => {
@@ -224,6 +282,30 @@ describe("CreatePage recovery", () => {
     expect(screen.getByText("background update")).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByDisplayValue("locally edited draft")).toBeInTheDocument();
+    });
+  });
+
+  it("persists edited draft content and option changes into the hidden draft workspace", async () => {
+    render(
+      <MemoryRouter>
+        <CreatePage />
+      </MemoryRouter>
+    );
+
+    const composer = (await screen.findByPlaceholderText(
+      "描述你的场景、光线、动作与配乐..."
+    )) as HTMLTextAreaElement;
+    await userEvent.type(composer, "storm over the harbor");
+    await userEvent.click(screen.getByRole("button", { name: "风格" }));
+    await userEvent.click(screen.getByRole("option", { name: "动漫" }));
+
+    await waitFor(() => {
+      const activeSessionId = getActiveSessionId();
+      expect(activeSessionId).toBeTruthy();
+      const detail = getSessionDetail(activeSessionId ?? "");
+      expect(detail?.draft).toBe("storm over the harbor");
+      expect(detail?.options.style).toBe("anime");
+      expect(detail?.status).toBe("draft");
     });
   });
 });

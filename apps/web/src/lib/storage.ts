@@ -95,10 +95,18 @@ export const onRecentWorksUpdate = (handler: () => void) => {
 const SESSION_INDEX_KEY = "foranimind.sessions";
 const SESSION_KEY_PREFIX = "foranimind.session.";
 const ACTIVE_SESSION_KEY = "foranimind.activeSessionId";
+const DRAFT_SESSION_KEY = "foranimind.draftSessionId";
 const SESSIONS_EVENT = "foranimind:sessionsUpdated";
 const MAX_TITLE_LENGTH = 48;
 const DEFAULT_SESSION_TITLE = "新建项目";
 const LEGACY_SESSION_TITLE = "New project";
+const DEFAULT_SESSION_STYLE = "cinematic";
+const DEFAULT_SESSION_MOOD = "epic";
+const DEFAULT_SESSION_DURATION = 14;
+const DEFAULT_SESSION_MODEL = "atlas_3_preview";
+const DEFAULT_SESSION_SEED = "";
+const DEFAULT_SESSION_RESOLUTION = "panorama_2k";
+const DEFAULT_SESSION_EXPORT_PRESET = "mp4_1080p";
 
 export type SessionStatus = "draft" | "queued" | "running" | "done" | "error" | "canceled";
 export type SessionMessageRole = "user" | "system" | "tool" | "result";
@@ -367,9 +375,8 @@ const deriveSessionTitle = (detail: SessionDetail): string => {
   return DEFAULT_SESSION_TITLE;
 };
 
-export const listSessions = (): SessionIndexItem[] => {
-  const items = readSessionIndex();
-  return items.slice().sort((a, b) => {
+const sortSessionItems = (items: SessionIndexItem[]) =>
+  items.slice().sort((a, b) => {
     const pinnedDelta = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
     if (pinnedDelta !== 0) {
       return pinnedDelta;
@@ -382,7 +389,37 @@ export const listSessions = (): SessionIndexItem[] => {
     }
     return b.createdAt.localeCompare(a.createdAt);
   });
+
+const isDefaultSessionOptions = (options: SessionOptions) =>
+  options.style === DEFAULT_SESSION_STYLE &&
+  options.mood === DEFAULT_SESSION_MOOD &&
+  options.duration === DEFAULT_SESSION_DURATION &&
+  options.advancedSettings.model === DEFAULT_SESSION_MODEL &&
+  options.advancedSettings.seed === DEFAULT_SESSION_SEED &&
+  options.advancedSettings.resolution === DEFAULT_SESSION_RESOLUTION &&
+  options.exportPreset === DEFAULT_SESSION_EXPORT_PRESET;
+
+const isDraftSessionDetail = (detail: SessionDetail | null): detail is SessionDetail =>
+  Boolean(detail && detail.status === "draft" && !detail.jobId);
+
+export const hasMeaningfulDraftContent = (detail: SessionDetail) => {
+  const hasDraftText = detail.draft.trim().length > 0;
+  const hasUserMessage = detail.messages.some(
+    (message) => message.role === "user" && message.content.trim().length > 0
+  );
+  const hasOptionEdits = !isDefaultSessionOptions(detail.options);
+  return hasDraftText || hasUserMessage || hasOptionEdits;
 };
+
+export const listSessions = (): SessionIndexItem[] => {
+  return sortSessionItems(readSessionIndex());
+};
+
+export const listRecentSessions = (): SessionIndexItem[] =>
+  sortSessionItems(readSessionIndex()).filter((item) => {
+    const detail = getSessionDetail(item.id);
+    return !isDraftSessionDetail(detail);
+  });
 
 export const getActiveSessionId = (): string | null => {
   if (typeof localStorage === "undefined") {
@@ -391,8 +428,19 @@ export const getActiveSessionId = (): string | null => {
   return localStorage.getItem(ACTIVE_SESSION_KEY);
 };
 
+export const getDraftSessionId = (): string | null => {
+  if (typeof localStorage === "undefined") {
+    return null;
+  }
+  return localStorage.getItem(DRAFT_SESSION_KEY);
+};
+
 export const setActiveSessionId = (sessionId: string | null) => {
   if (typeof localStorage === "undefined") {
+    return;
+  }
+  const current = localStorage.getItem(ACTIVE_SESSION_KEY);
+  if ((sessionId ?? null) === (current ?? null)) {
     return;
   }
   if (sessionId) {
@@ -403,11 +451,77 @@ export const setActiveSessionId = (sessionId: string | null) => {
   notifySessionsUpdate();
 };
 
+export const setDraftSessionId = (sessionId: string | null) => {
+  if (typeof localStorage === "undefined") {
+    return;
+  }
+  const current = localStorage.getItem(DRAFT_SESSION_KEY);
+  if ((sessionId ?? null) === (current ?? null)) {
+    return;
+  }
+  if (sessionId) {
+    localStorage.setItem(DRAFT_SESSION_KEY, sessionId);
+  } else {
+    localStorage.removeItem(DRAFT_SESSION_KEY);
+  }
+  notifySessionsUpdate();
+};
+
 export const getSessionDetail = (sessionId: string): SessionDetail | null => {
   if (typeof localStorage === "undefined") {
     return null;
   }
   return safeParseSessionDetail(localStorage.getItem(getSessionDetailKey(sessionId)));
+};
+
+export const getDraftSessionDetail = (): SessionDetail | null => {
+  const draftSessionId = getDraftSessionId();
+  if (!draftSessionId) {
+    return null;
+  }
+  const detail = getSessionDetail(draftSessionId);
+  return isDraftSessionDetail(detail) ? detail : null;
+};
+
+export const findLatestDraftSessionDetail = (): SessionDetail | null => {
+  const keyedDraft = getDraftSessionDetail();
+  if (keyedDraft) {
+    return keyedDraft;
+  }
+  const draftItems = sortSessionItems(readSessionIndex());
+  let fallback: SessionDetail | null = null;
+  for (const item of draftItems) {
+    const detail = getSessionDetail(item.id);
+    if (!isDraftSessionDetail(detail)) {
+      continue;
+    }
+    if (hasMeaningfulDraftContent(detail)) {
+      return detail;
+    }
+    fallback = fallback ?? detail;
+  }
+  return fallback;
+};
+
+export const pruneEmptyDraftSessions = (preserveSessionId?: string) => {
+  const draftItems = sortSessionItems(readSessionIndex());
+  draftItems.forEach((item) => {
+    if (item.id === preserveSessionId) {
+      return;
+    }
+    const detail = getSessionDetail(item.id);
+    if (isDraftSessionDetail(detail) && !hasMeaningfulDraftContent(detail)) {
+      removeSession(item.id);
+    }
+  });
+  const draftSessionId = getDraftSessionId();
+  if (!draftSessionId) {
+    return;
+  }
+  const draftDetail = getSessionDetail(draftSessionId);
+  if (!isDraftSessionDetail(draftDetail)) {
+    setDraftSessionId(null);
+  }
 };
 
 export const saveSessionDetail = (
@@ -450,6 +564,9 @@ export const saveSessionDetail = (
   };
   const nextItems = [nextItem, ...items.filter((item) => item.id !== detail.id)];
   writeSessionIndex(nextItems);
+  if (detail.status !== "draft" && getDraftSessionId() === detail.id) {
+    setDraftSessionId(null);
+  }
 };
 
 export const upsertSessionIndex = (item: SessionIndexItem) => {
@@ -557,17 +674,10 @@ export const listEmptySessions = (): SessionIndexItem[] => {
   const items = readSessionIndex();
   return items.filter((item) => {
     const detail = getSessionDetail(item.id);
-    if (!detail) {
+    if (!isDraftSessionDetail(detail)) {
       return false;
     }
-    const hasJob = Boolean(detail.jobId ?? item.jobId);
-    if (hasJob) {
-      return false;
-    }
-    const hasUserMessage = detail.messages.some(
-      (message) => message.role === "user" && message.content.trim().length > 0
-    );
-    return !hasUserMessage;
+    return !hasMeaningfulDraftContent(detail);
   });
 };
 
@@ -580,6 +690,9 @@ export const removeSession = (sessionId: string) => {
   writeSessionIndex(items.filter((item) => item.id !== sessionId));
   if (getActiveSessionId() === sessionId) {
     setActiveSessionId(null);
+  }
+  if (getDraftSessionId() === sessionId) {
+    setDraftSessionId(null);
   }
 };
 

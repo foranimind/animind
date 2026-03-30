@@ -39,23 +39,25 @@ export const PromptComposer = ({
     </label>
     <textarea
       id="prompt-composer"
-      className="prompt-composer-input"
+      className="prompt-composer-input ui-scrollbar"
       value={draft}
       rows={8}
       placeholder="描述你的场景、光线、动作与配乐..."
       onChange={(event) => onDraftChange(event.target.value)}
     />
 
-    {helperBar}
+    <div className="prompt-composer-footer">
+      {helperBar}
 
-    <div className="prompt-composer-actions">
-      <ActionButton
-        className="prompt-composer-submit"
-        disabled={!canSubmit || isSubmitting}
-        onClick={onSubmit}
-      >
-        {isSubmitting ? "创建中..." : "开始生成"}
-      </ActionButton>
+      <div className="prompt-composer-actions">
+        <ActionButton
+          className="prompt-composer-submit"
+          disabled={!canSubmit || isSubmitting}
+          onClick={onSubmit}
+        >
+          {isSubmitting ? "创建中..." : "开始生成"}
+        </ActionButton>
+      </div>
     </div>
   </SurfacePanel>
 );

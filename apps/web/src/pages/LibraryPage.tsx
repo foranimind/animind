@@ -221,7 +221,7 @@ export const LibraryPage = () => {
       <PageHeader
         eyebrow="Archive Gallery"
         title="我的作品"
-        description="以画廊节奏浏览本地保存的最近作品。"
+        description="在这里查看最近保存的作品、封面与归档结果。"
         accessory={<div className="library-count">共 {filteredWorks.length} 件作品</div>}
         className="library-header"
       />
@@ -240,14 +240,30 @@ export const LibraryPage = () => {
           bodyClassName="library-empty-body"
           header={
             <div className="library-empty-header">
-              <div className="library-empty-title">暂无匹配结果</div>
-              <div className="library-empty-subtitle">调整筛选条件或开始新的创作。</div>
+              <div className="library-empty-title">这里还没有作品归档</div>
+              <div className="library-empty-subtitle">
+                第一条生成完成后，它会带着封面和基础信息出现在这里。现在可以先去发起新的创作。
+              </div>
             </div>
           }
         >
-          <ActionButton href="/" variant="ghost" className="library-empty-action">
-            开始创作
-          </ActionButton>
+          <div className="library-empty-actions">
+            <ActionButton href="/" className="library-empty-action">
+              <span className="library-empty-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 20 20">
+                  <path
+                    d="M4.5 10h10M11 6.5 14.5 10 11 13.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <span>开始创作</span>
+            </ActionButton>
+          </div>
         </SurfacePanel>
       ) : (
         <div className="library-grid" aria-label="作品归档画廊">

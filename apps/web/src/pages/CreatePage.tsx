@@ -7,7 +7,7 @@ import { PromptHelperBar } from "../components/create/PromptHelperBar";
 import { RecoveredContextPanel } from "../components/create/RecoveredContextPanel";
 import { PageHeader } from "../components/ui/PageHeader";
 import { createJob } from "../lib/api";
-import { createNewSession } from "../lib/sessionActions";
+import { ensureDraftSession } from "../lib/sessionActions";
 import {
   getActiveSessionId,
   getSessionDetail,
@@ -19,10 +19,27 @@ import {
 import "./pages.css";
 import "./create.css";
 
+const areSessionOptionsEqual = (left: SessionDetail["options"], right: SessionDetail["options"]) =>
+  left.style === right.style &&
+  left.mood === right.mood &&
+  left.duration === right.duration &&
+  left.exportPreset === right.exportPreset &&
+  left.advancedSettings.model === right.advancedSettings.model &&
+  left.advancedSettings.seed === right.advancedSettings.seed &&
+  left.advancedSettings.resolution === right.advancedSettings.resolution;
+
 const getPersistedPageDetail = (): SessionDetail => {
   const activeSessionId = getActiveSessionId();
   const activeDetail = activeSessionId ? getSessionDetail(activeSessionId) : null;
-  return activeDetail ?? createNewSession();
+  if (
+    activeDetail &&
+    (activeDetail.status === "draft" ||
+      activeDetail.status === "error" ||
+      activeDetail.status === "canceled")
+  ) {
+    return activeDetail;
+  }
+  return ensureDraftSession();
 };
 
 export const CreatePage = () => {
@@ -31,6 +48,7 @@ export const CreatePage = () => {
   const [draft, setDraft] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const activeSessionIdRef = useRef<string | null>(null);
+  const hasRecovery = Boolean(detail?.recovery);
 
   useEffect(() => {
     const syncActiveSession = () => {
@@ -46,6 +64,31 @@ export const CreatePage = () => {
     syncActiveSession();
     return onSessionsUpdate(syncActiveSession);
   }, []);
+
+  useEffect(() => {
+    if (!detail) {
+      return;
+    }
+    const persisted = getSessionDetail(detail.id);
+    const hasDraftChanged = (persisted?.draft ?? "") !== draft;
+    const hasOptionChanges = !persisted || !areSessionOptionsEqual(persisted.options, detail.options);
+    if (!hasDraftChanged && !hasOptionChanges) {
+      return;
+    }
+    const now = new Date().toISOString();
+    saveSessionDetail(
+      {
+        ...detail,
+        draft,
+        updatedAt: now,
+      },
+      {
+        status: detail.status,
+        jobId: detail.jobId,
+        updatedAt: now,
+      }
+    );
+  }, [detail, draft]);
 
   const canSubmit = draft.trim().length > 0;
   const createOptions = useMemo(
@@ -136,7 +179,7 @@ export const CreatePage = () => {
         description="整理场景、镜头、动作和情绪，然后直接发起新的生成任务。"
       />
 
-      <div className="create-desk-layout">
+      <div className={`create-desk-layout${hasRecovery ? " has-recovery" : ""}`}>
         {detail.recovery ? (
           <div className="create-desk-recovery">
             <RecoveredContextPanel recovery={detail.recovery} messages={detail.messages} />

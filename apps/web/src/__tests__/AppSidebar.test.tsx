@@ -6,7 +6,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import { AppSidebar } from "../components/sidebar/AppSidebar";
 import { buildDefaultSessionDetail } from "../lib/sessionDefaults";
-import { saveSessionDetail, setActiveSessionId } from "../lib/storage";
+import { getActiveSessionId, saveSessionDetail, setActiveSessionId } from "../lib/storage";
 
 const navigateSpy = vi.fn();
 
@@ -22,10 +22,12 @@ describe("AppSidebar", () => {
   beforeEach(() => {
     localStorage.clear();
     navigateSpy.mockReset();
+    vi.stubGlobal("confirm", vi.fn(() => true));
   });
 
   afterEach(() => {
     localStorage.clear();
+    vi.unstubAllGlobals();
   });
 
   it("renders canceled status class for sessions", () => {
@@ -88,13 +90,14 @@ describe("AppSidebar", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole("button", { name: "Draft scene" })).not.toHaveClass("active");
+    expect(screen.queryByRole("button", { name: "Draft scene" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delivered scene" })).not.toHaveClass("active");
   });
 
-  it("does not mark a recent project as current on the create route", () => {
+  it("keeps the create workspace separate from recent-project highlighting on the create route", () => {
     const now = new Date().toISOString();
     const draft = buildDefaultSessionDetail("sess-draft", now);
+    draft.draft = "Draft scene";
     draft.lastPrompt = "Draft scene";
 
     const done = buildDefaultSessionDetail("sess-done", now);
@@ -112,8 +115,72 @@ describe("AppSidebar", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole("button", { name: "Draft scene" })).not.toHaveClass("active");
+    expect(screen.queryByRole("button", { name: "Draft scene" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delivered scene" })).not.toHaveClass("active");
+    expect(screen.getByRole("link", { name: "创作" })).toHaveClass("active");
+  });
+
+  it("does not render untouched drafts in recent projects", () => {
+    const now = new Date().toISOString();
+    const untouchedDraft = buildDefaultSessionDetail("sess-draft", now);
+
+    saveSessionDetail(untouchedDraft);
+    setActiveSessionId(untouchedDraft.id);
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("暂无项目")).toBeInTheDocument();
+  });
+
+  it("does not use a system confirm when new project is clicked from an empty draft", async () => {
+    const user = userEvent.setup();
+    const now = new Date().toISOString();
+    const untouchedDraft = buildDefaultSessionDetail("sess-empty", now);
+
+    saveSessionDetail(untouchedDraft);
+    setActiveSessionId(untouchedDraft.id);
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: "新建项目" }));
+
+    expect(globalThis.confirm).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog", { name: "开始新的草稿" })).not.toBeInTheDocument();
+  });
+
+  it("opens a custom replace-draft dialog instead of a system confirm for a non-empty draft", async () => {
+    const user = userEvent.setup();
+    const now = new Date().toISOString();
+    const draft = buildDefaultSessionDetail("sess-draft", now);
+    draft.draft = "retained draft";
+    draft.lastPrompt = "retained draft";
+
+    saveSessionDetail(draft);
+    setActiveSessionId(draft.id);
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: "新建项目" }));
+
+    expect(globalThis.confirm).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "开始新的草稿" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "新建草稿" }));
+
+    expect(screen.queryByRole("dialog", { name: "开始新的草稿" })).not.toBeInTheDocument();
+    expect(getActiveSessionId()).not.toBe(draft.id);
   });
 
   it("does not highlight any recent project when the active session is absent from the list", () => {
@@ -138,6 +205,8 @@ describe("AppSidebar", () => {
   it("does not mount session menu items until a menu is opened", () => {
     const now = new Date().toISOString();
     const detail = buildDefaultSessionDetail("sess-draft", now);
+    detail.status = "done";
+    detail.jobId = "job-123";
     detail.lastPrompt = "Draft scene";
 
     saveSessionDetail(detail);
@@ -156,9 +225,13 @@ describe("AppSidebar", () => {
     const user = userEvent.setup();
     const now = new Date().toISOString();
     const first = buildDefaultSessionDetail("sess-first", now);
+    first.status = "done";
+    first.jobId = "job-1";
     first.lastPrompt = "First scene";
 
     const second = buildDefaultSessionDetail("sess-second", now);
+    second.status = "done";
+    second.jobId = "job-2";
     second.lastPrompt = "Second scene";
 
     saveSessionDetail(first);
@@ -193,9 +266,13 @@ describe("AppSidebar", () => {
     const user = userEvent.setup();
     const now = new Date().toISOString();
     const first = buildDefaultSessionDetail("sess-first", now);
+    first.status = "done";
+    first.jobId = "job-1";
     first.lastPrompt = "First scene";
 
     const second = buildDefaultSessionDetail("sess-second", now);
+    second.status = "done";
+    second.jobId = "job-2";
     second.lastPrompt = "Second scene";
 
     saveSessionDetail(first);
@@ -303,6 +380,6 @@ describe("AppSidebar", () => {
     expect(screen.getByRole("link", { name: "创作" })).toHaveClass("active");
     expect(screen.getByRole("link", { name: "我的作品" })).not.toHaveClass("active");
     expect(screen.getByRole("button", { name: "Delivered scene" })).toHaveClass("active");
-    expect(screen.getByRole("button", { name: "Draft scene" })).not.toHaveClass("active");
+    expect(screen.queryByRole("button", { name: "Draft scene" })).not.toBeInTheDocument();
   });
 });

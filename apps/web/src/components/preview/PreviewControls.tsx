@@ -81,7 +81,7 @@ export const PreviewControls = ({
           onPointerUp={onSeekEnd}
           onPointerCancel={onSeekEnd}
           aria-label="Timeline"
-          className="three-preview-range"
+          className="ui-range three-preview-range"
         />
         <div className="three-preview-time">
           {formatTime(clampedTime)} / {formatTime(safeDuration)}

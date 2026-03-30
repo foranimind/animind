@@ -62,7 +62,8 @@
 .library-empty-body {
   display: grid;
   justify-items: center;
-  gap: 16px;
+  gap: 22px;
+  padding-top: 6px;
 }
 
 .library-empty-title {
@@ -73,10 +74,41 @@
 .library-empty-subtitle {
   font-size: 0.9rem;
   color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.library-empty-actions {
+  display: flex;
+  justify-content: center;
 }
 
 .library-empty-action {
-  min-width: 132px;
+  min-width: 156px;
+  min-height: 48px;
+  padding-inline: 18px;
+  border-color: rgba(214, 180, 117, 0.42);
+  background:
+    linear-gradient(140deg, rgba(232, 194, 122, 0.2), rgba(90, 122, 210, 0.14)),
+    rgba(20, 27, 38, 0.94);
+  box-shadow: 0 14px 30px rgba(5, 10, 20, 0.22);
+}
+
+.library-empty-action:hover {
+  transform: translateY(-1px);
+  border-color: rgba(232, 194, 122, 0.62);
+}
+
+.library-empty-action-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.library-empty-action-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 @media (min-width: 840px) {

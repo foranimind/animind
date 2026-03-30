@@ -1,4 +1,4 @@
-import { listSessions, onSessionsUpdate } from "../lib/storage";
+import { listRecentSessions, onSessionsUpdate } from "../lib/storage";
 import type { SessionIndexItem } from "../lib/storage";
 import { useStorageList } from "./useStorageList";
 
@@ -8,4 +8,4 @@ type SessionsResult = {
 };
 
 export const useSessions = (): SessionsResult =>
-  useStorageList<SessionIndexItem>(listSessions, onSessionsUpdate);
+  useStorageList<SessionIndexItem>(listRecentSessions, onSessionsUpdate);
