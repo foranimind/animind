@@ -9,6 +9,7 @@ from .reporter import ProgressReporter
 from .store import JobStore
 from ..adapters.base import AdapterCanceled, AdapterResult, CancelToken, build_error
 from ..adapters.registry import get_adapter
+from ..config.providers import get_default_provider
 from ..config.runtime import get_runtime_paths
 from ..storage.job_fs import ensure_job_dirs
 from ..storage.manifest import make_asset_url, write_manifest
@@ -44,15 +45,6 @@ _STAGE_MESSAGES = {
     JobStatus.RUNNING_CHARACTER: "running character",
     JobStatus.COMPOSING_PREVIEW: "composing preview",
     JobStatus.EXPORTING_VIDEO: "exporting video",
-}
-
-_DEFAULT_PROVIDERS = {
-    "scene": "diffusion360_local",
-    "motion": "animationgpt_local",
-    "music": "musicgpt_cli",
-    "character": "builtin_library",
-    "preview": "web_threejs",
-    "export": "ffmpeg_export",
 }
 
 _GPU_STAGES = {
@@ -407,7 +399,7 @@ def _resolve_provider_id(uir: Dict[str, Any], modality: str) -> Optional[str]:
             provider = entry.get("provider")
             if isinstance(provider, str) and provider.strip():
                 return provider.strip()
-    return _DEFAULT_PROVIDERS.get(modality)
+    return get_default_provider(modality)
 
 
 def _modality_requested(uir: Dict[str, Any], modality: str) -> bool:

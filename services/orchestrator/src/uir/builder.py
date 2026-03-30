@@ -3,19 +3,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..config.providers import get_default_provider
 from .models import KNOWN_MODULES
 
 _DEFAULT_TARGETS = ("scene", "motion", "music", "preview", "export")
 _DEFAULT_SCENE_RESOLUTION = (2048, 1024)
 _DEFAULT_EXPORT_PRESET = "mp4_1080p"
-_DEFAULT_PROVIDERS = {
-    "scene": "diffusion360_local",
-    "motion": "animationgpt_local",
-    "music": "musicgpt_cli",
-    "character": "builtin_library",
-    "preview": "web_threejs",
-    "export": "ffmpeg_export",
-}
 _EXPORT_PRESET_RESOLUTIONS = {
     "mp4_720p": (1280, 720),
     "mp4_1080p": (1920, 1080),
@@ -228,9 +221,7 @@ def _build_routing(options: Dict[str, Any], targets: List[str]) -> Dict[str, Any
     overrides = overrides if isinstance(overrides, dict) else {}
     routing: Dict[str, Any] = {}
     for name in targets:
-        provider = _provider_override(overrides.get(name))
-        if not provider:
-            provider = _DEFAULT_PROVIDERS.get(name)
+        provider = _provider_override(overrides.get(name)) or get_default_provider(name)
         if provider:
             routing[name] = {"provider": provider}
     return routing
