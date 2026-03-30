@@ -15,6 +15,7 @@ from .scheduler.worker import worker_loop
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
+    JOB_STORE.sync_runtime()
     worker_task = asyncio.create_task(worker_loop(JOB_STORE))
     try:
         yield
@@ -27,6 +28,7 @@ async def _lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    JOB_STORE.sync_runtime()
     app = FastAPI(lifespan=_lifespan)
 
     # TODO: Restrict origins to apps/web dev ports once known.
