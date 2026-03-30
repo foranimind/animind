@@ -11,6 +11,9 @@ from .diffusion360 import Diffusion360Adapter
 from .ffmpeg_export import FfmpegExportAdapter
 from .musicgpt_cli import MusicGPTCliAdapter
 from .preview import PreviewConfigBuilder
+from .remote_motion import RemoteMotionAdapter
+from .remote_music import RemoteMusicAdapter
+from .remote_scene import RemoteSceneAdapter
 
 class AdapterRegistry:
     def __init__(self) -> None:
@@ -50,10 +53,13 @@ def list_adapters() -> Iterable[str]:
 def _register_defaults() -> None:
     register_adapter(DummyAdapter())
     register_adapter(AnimationGPTAdapter())
+    register_adapter(RemoteMotionAdapter())
     register_adapter(BuiltinCharacterSelector())
     register_adapter(PreviewConfigBuilder())
     register_adapter(MusicGPTCliAdapter())
+    register_adapter(RemoteMusicAdapter())
     register_adapter(Diffusion360Adapter())
+    register_adapter(RemoteSceneAdapter())
     register_adapter(FfmpegExportAdapter())
     register_adapter(DummySceneAdapter())
     register_adapter(DummyMusicAdapter())
