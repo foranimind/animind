@@ -69,7 +69,7 @@ export const AppSidebar = () => {
     setMenuOpenId(null);
     setRenamingId(null);
     ensureDraftSession();
-    navigate("/");
+    navigate("/studio");
   };
 
   const handleConfirmDraftReset = () => {
@@ -81,7 +81,7 @@ export const AppSidebar = () => {
     setMenuOpenId(null);
     setRenamingId(null);
     createNewSession();
-    navigate("/");
+    navigate("/studio");
   };
 
   const handleSessionSelect = (sessionId: string) => {
@@ -162,8 +162,7 @@ export const AppSidebar = () => {
   const pathname = location.pathname;
   const isJobRoute = pathname.startsWith("/jobs/");
   const isDeliveryRoute = pathname.startsWith("/works/");
-  const isCreateNavActive =
-    pathname === "/" || isJobRoute || isDeliveryRoute;
+  const isCreateNavActive = pathname === "/studio" || isJobRoute || isDeliveryRoute;
   const routeSessionId = (() => {
     if (!isJobRoute && !isDeliveryRoute) {
       return null;
@@ -216,7 +215,7 @@ export const AppSidebar = () => {
       <nav className="sidebar-nav" aria-label="主导航">
         <NavLink
           end
-          to="/"
+          to="/studio"
           className={() => `sidebar-link ${isCreateNavActive ? "active" : ""}`}
           aria-label="创作"
           title="创作"

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { BrowserRouter, MemoryRouter } from "react-router-dom";
+import { BrowserRouter } from "react-router-dom";
 
 import { App } from "../App";
 import { buildDefaultSessionDetail } from "../lib/sessionDefaults";
@@ -17,7 +17,7 @@ describe("App routes", () => {
     window.history.pushState({}, "", "/");
   });
 
-  it("restores a running active session to the job route on root load", async () => {
+  it("keeps the public welcome page on root load when a running session exists", async () => {
     const now = new Date().toISOString();
     const detail = buildDefaultSessionDetail("sess-running", now);
     detail.status = "running";
@@ -34,14 +34,44 @@ describe("App routes", () => {
     );
 
     await waitFor(() => {
-      expect(window.location.pathname).toBe("/jobs/job-123");
+      expect(window.location.pathname).toBe("/");
     });
-
-    expect(screen.getByRole("heading", { name: "任务进度" })).toBeInTheDocument();
-    expect(screen.getByText(/job-123/)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Animind Studio" })
+    ).toBeInTheDocument();
+    const continueLinks = await screen.findAllByRole("link", { name: "继续创作" });
+    expect(continueLinks.length).toBeGreaterThan(0);
+    continueLinks.forEach((link) => {
+      expect(link).toHaveAttribute("href", "/jobs/job-123");
+    });
   });
 
-  it("switches completed history back to the draft workspace on root load", async () => {
+  it("restores a running active session from the studio route to the job route", async () => {
+    const now = new Date().toISOString();
+    const detail = buildDefaultSessionDetail("sess-running", now);
+    detail.status = "running";
+    detail.jobId = "job-123";
+    detail.lastPrompt = "Running scene";
+
+    saveSessionDetail(detail);
+    setActiveSessionId(detail.id);
+
+    window.history.pushState({}, "", "/studio");
+
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/jobs/job-123");
+    });
+    expect(await screen.findByRole("heading", { name: "任务进度" })).toBeInTheDocument();
+    expect(await screen.findByText(/job-123/)).toBeInTheDocument();
+  });
+
+  it("switches completed history back to a draft workspace on the studio route", async () => {
     const now = new Date().toISOString();
     const detail = buildDefaultSessionDetail("sess-done", now);
     detail.status = "done";
@@ -52,6 +82,8 @@ describe("App routes", () => {
     saveSessionDetail(detail);
     setActiveSessionId(detail.id);
 
+    window.history.pushState({}, "", "/studio");
+
     render(
       <BrowserRouter>
         <App />
@@ -59,9 +91,10 @@ describe("App routes", () => {
     );
 
     await waitFor(() => {
-      expect(window.location.pathname).toBe("/");
+      expect(window.location.pathname).toBe("/studio");
     });
 
+    expect(screen.getByRole("heading", { name: "创作台" })).toBeInTheDocument();
     expect(screen.getByText("创作描述")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "交付结果" })).not.toBeInTheDocument();
     const composer = screen.getByPlaceholderText("描述你的场景、光线、动作与配乐...") as HTMLTextAreaElement;
@@ -75,15 +108,34 @@ describe("App routes", () => {
     });
   });
 
-  it("does not render running or delivery controls on the create route", () => {
+  it("does not render running or delivery controls on the studio route", () => {
+    window.history.pushState({}, "", "/studio");
+
     render(
-      <MemoryRouter initialEntries={["/"]}>
+      <BrowserRouter>
         <App />
-      </MemoryRouter>
+      </BrowserRouter>
     );
 
+    expect(screen.getByRole("heading", { name: "创作台" })).toBeInTheDocument();
     expect(screen.queryByText("任务进度")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "取消生成" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "导出视频" })).not.toBeInTheDocument();
+  });
+
+  it("redirects unknown routes to the public landing page", async () => {
+    window.history.pushState({}, "", "/not-a-route");
+
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/");
+    });
+
+    expect(screen.getByRole("heading", { name: "Animind Studio" })).toBeInTheDocument();
   });
 });

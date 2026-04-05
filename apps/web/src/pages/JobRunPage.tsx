@@ -97,7 +97,7 @@ export const JobRunPage = () => {
           { status: reason, jobId: id, updatedAt: now }
         );
         setActiveSessionId(sessionId);
-        navigate("/", { replace: true });
+        navigate("/studio", { replace: true });
       }
     },
     [id, navigate, sessionId]

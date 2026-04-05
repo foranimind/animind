@@ -11,6 +11,13 @@ const { navigateSpy, subscribeExistingJobSpy } = vi.hoisted(() => ({
   subscribeExistingJobSpy: vi.fn(() => Promise.resolve()),
 }));
 
+let jobStatusState = {
+  status: "DONE",
+  stage: "DONE",
+  progress: 100,
+  logs_tail: ["done"],
+};
+
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
   return {
@@ -23,7 +30,7 @@ vi.mock("react-router-dom", async () => {
 vi.mock("../hooks/useJobRunner", () => ({
   useJobRunner: () => ({
     jobId: "job_live",
-    jobStatus: { status: "DONE", stage: "DONE", progress: 100, logs_tail: ["done"] },
+    jobStatus: jobStatusState,
     error: null,
     isStarting: false,
     connectionState: "connected",
@@ -38,6 +45,12 @@ describe("JobRunPage", () => {
   beforeEach(() => {
     navigateSpy.mockReset();
     subscribeExistingJobSpy.mockClear();
+    jobStatusState = {
+      status: "DONE",
+      stage: "DONE",
+      progress: 100,
+      logs_tail: ["done"],
+    };
     localStorage.clear();
   });
 
@@ -57,6 +70,32 @@ describe("JobRunPage", () => {
 
     await waitFor(() => {
       expect(navigateSpy).toHaveBeenCalledWith("/works/job_live", { replace: true });
+    });
+  });
+
+  it("routes failed jobs back to the studio path", async () => {
+    jobStatusState = {
+      status: "FAILED",
+      stage: "FAILED",
+      progress: 100,
+      logs_tail: ["failed"],
+    };
+
+    const now = new Date().toISOString();
+    const detail = buildDefaultSessionDetail("sess_failed", now);
+    detail.status = "running";
+    detail.jobId = "job_live";
+    saveSessionDetail(detail);
+    setActiveSessionId(detail.id);
+
+    render(
+      <MemoryRouter>
+        <JobRunPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(navigateSpy).toHaveBeenCalledWith("/studio", { replace: true });
     });
   });
 });

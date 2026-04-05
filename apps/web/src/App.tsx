@@ -1,11 +1,26 @@
-import { Route, Routes, useParams } from "react-router-dom";
+import { Suspense, lazy } from "react";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 
-import { CreatePage } from "./pages/CreatePage";
-import { DetailPage } from "./pages/DetailPage";
-import { HomeRoute } from "./pages/HomeRoute";
-import { LibraryPage } from "./pages/LibraryPage";
-import { JobRunPage } from "./pages/JobRunPage";
-import { AppLayout } from "./components/layout/AppLayout";
+import { AppLoadingShell } from "./components/layout/AppLoadingShell";
+
+const AppLayout = lazy(async () => ({
+  default: (await import("./components/layout/AppLayout")).AppLayout,
+}));
+const DetailPage = lazy(async () => ({
+  default: (await import("./pages/DetailPage")).DetailPage,
+}));
+const JobRunPage = lazy(async () => ({
+  default: (await import("./pages/JobRunPage")).JobRunPage,
+}));
+const LibraryPage = lazy(async () => ({
+  default: (await import("./pages/LibraryPage")).LibraryPage,
+}));
+const StudioRoute = lazy(async () => ({
+  default: (await import("./pages/StudioRoute")).StudioRoute,
+}));
+const WelcomePage = lazy(async () => ({
+  default: (await import("./pages/WelcomePage")).WelcomePage,
+}));
 
 const WorkDetailRoute = () => {
   const { id } = useParams();
@@ -13,13 +28,16 @@ const WorkDetailRoute = () => {
 };
 
 export const App = () => (
-  <Routes>
-    <Route element={<AppLayout />}>
-      <Route path="/" element={<HomeRoute />} />
-      <Route path="/jobs/:id" element={<JobRunPage />} />
-      <Route path="/works" element={<LibraryPage />} />
-      <Route path="/works/:id" element={<WorkDetailRoute />} />
-      <Route path="*" element={<CreatePage />} />
-    </Route>
-  </Routes>
+  <Suspense fallback={<AppLoadingShell />}>
+    <Routes>
+      <Route path="/" element={<WelcomePage />} />
+      <Route element={<AppLayout />}>
+        <Route path="/studio" element={<StudioRoute />} />
+        <Route path="/jobs/:id" element={<JobRunPage />} />
+        <Route path="/works" element={<LibraryPage />} />
+        <Route path="/works/:id" element={<WorkDetailRoute />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  </Suspense>
 );

@@ -174,3 +174,19 @@ runtime/
 .codex/
 .superpowers/
 .worktrees/
+
+# Playwright and verification artifacts
+.playwright-cli/
+**/.playwright-cli/
+test-results/
+**/test-results/
+output/playwright/
+**/output/playwright/
+
+# Local planning and audit notes
+findings.md
+progress.md
+task_plan.md
+*_findings.md
+*_progress.md
+*_task_plan.md

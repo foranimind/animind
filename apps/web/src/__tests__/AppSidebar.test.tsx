@@ -70,6 +70,28 @@ describe("AppSidebar", () => {
     expect(navigateSpy).toHaveBeenCalledWith("/jobs/job-123");
   });
 
+  it("routes the new project action and the 创作 link to the studio path", async () => {
+    const user = userEvent.setup();
+    const now = new Date().toISOString();
+    const detail = buildDefaultSessionDetail("sess-draft", now);
+
+    saveSessionDetail(detail);
+    setActiveSessionId(detail.id);
+
+    render(
+      <MemoryRouter initialEntries={["/studio"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("link", { name: "创作" })).toHaveAttribute("href", "/studio");
+    expect(screen.getByRole("link", { name: "创作" })).toHaveClass("active");
+
+    await user.click(screen.getByRole("button", { name: "新建项目" }));
+
+    expect(navigateSpy).toHaveBeenCalledWith("/studio");
+  });
+
   it("does not mark a recent project as current on the library route", () => {
     const now = new Date().toISOString();
     const draft = buildDefaultSessionDetail("sess-draft", now);
@@ -110,7 +132,7 @@ describe("AppSidebar", () => {
     setActiveSessionId(draft.id);
 
     render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/studio"]}>
         <AppSidebar />
       </MemoryRouter>
     );
@@ -128,7 +150,7 @@ describe("AppSidebar", () => {
     setActiveSessionId(untouchedDraft.id);
 
     render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/studio"]}>
         <AppSidebar />
       </MemoryRouter>
     );
@@ -145,7 +167,7 @@ describe("AppSidebar", () => {
     setActiveSessionId(untouchedDraft.id);
 
     render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/studio"]}>
         <AppSidebar />
       </MemoryRouter>
     );
@@ -167,7 +189,7 @@ describe("AppSidebar", () => {
     setActiveSessionId(draft.id);
 
     render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/studio"]}>
         <AppSidebar />
       </MemoryRouter>
     );
@@ -181,6 +203,7 @@ describe("AppSidebar", () => {
 
     expect(screen.queryByRole("dialog", { name: "开始新的草稿" })).not.toBeInTheDocument();
     expect(getActiveSessionId()).not.toBe(draft.id);
+    expect(navigateSpy).toHaveBeenCalledWith("/studio");
   });
 
   it("does not highlight any recent project when the active session is absent from the list", () => {
@@ -213,7 +236,7 @@ describe("AppSidebar", () => {
     setActiveSessionId(detail.id);
 
     const { container } = render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/studio"]}>
         <AppSidebar />
       </MemoryRouter>
     );
@@ -239,7 +262,7 @@ describe("AppSidebar", () => {
     setActiveSessionId(first.id);
 
     const { container } = render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/studio"]}>
         <AppSidebar />
       </MemoryRouter>
     );
@@ -280,7 +303,7 @@ describe("AppSidebar", () => {
     setActiveSessionId(first.id);
 
     const { container } = render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/studio"]}>
         <AppSidebar />
       </MemoryRouter>
     );
@@ -312,7 +335,7 @@ describe("AppSidebar", () => {
     setActiveSessionId(detail.id);
 
     render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/studio"]}>
         <AppSidebar />
       </MemoryRouter>
     );
@@ -331,7 +354,7 @@ describe("AppSidebar", () => {
     setActiveSessionId(detail.id);
 
     const { unmount } = render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/studio"]}>
         <AppSidebar />
       </MemoryRouter>
     );
@@ -348,7 +371,7 @@ describe("AppSidebar", () => {
     unmount();
 
     render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/studio"]}>
         <AppSidebar />
       </MemoryRouter>
     );

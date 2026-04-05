@@ -248,7 +248,7 @@ export const LibraryPage = () => {
           }
         >
           <div className="library-empty-actions">
-            <ActionButton href="/" className="library-empty-action">
+            <ActionButton href="/studio" className="library-empty-action">
               <span className="library-empty-action-icon" aria-hidden="true">
                 <svg viewBox="0 0 20 20">
                   <path

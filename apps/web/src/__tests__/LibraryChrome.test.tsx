@@ -24,4 +24,10 @@ describe("LibraryPage chrome", () => {
     expect(container.querySelector(".library-drawer-close")).toBeNull();
     expect(container.querySelector(".library-filter-panel")).toBeNull();
   });
+
+  it("points the empty library CTA to the studio route", () => {
+    render(<LibraryPage />);
+
+    expect(screen.getByRole("link", { name: "开始创作" })).toHaveAttribute("href", "/studio");
+  });
 });
