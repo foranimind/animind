@@ -67,6 +67,31 @@ def _scene_only_uir(job_id: str = "job_invalid_mode") -> dict:
     }
 
 
+def _motion_only_uir(job_id: str = "job_retryable_motion") -> dict:
+    return {
+        "uir_version": "1.0",
+        "job": {"id": job_id, "created_at": "2025-12-20T00:00:00Z"},
+        "input": {"raw_prompt": "retry motion prompt", "lang": "en"},
+        "intent": {"targets": ["motion"], "duration_s": 12},
+        "routing": {
+            "motion": {"provider": "test_retryable_motion"},
+        },
+        "modules": {
+            "scene": {"enabled": False},
+            "motion": {
+                "enabled": True,
+                "prompt": "warrior slash",
+                "fps": 30,
+                "duration_s": 12,
+            },
+            "music": {"enabled": False},
+            "character": {"enabled": False},
+            "preview": {"enabled": False},
+            "export": {"enabled": False},
+        },
+    }
+
+
 class TestProviderConfig(unittest.TestCase):
     def test_local_mode_keeps_existing_local_providers(self):
         with orch_provider_env(ORCH_EXECUTION_MODE="local"):
@@ -190,6 +215,82 @@ class TestProviderConfigWorker(unittest.IsolatedAsyncioTestCase):
                         self.assertFalse(data["payload"]["retryable"])
                     finally:
                         await EVENT_BUS.unsubscribe(job.job_id, queue)
+            finally:
+                if previous_runtime_dir is None:
+                    os.environ.pop("ORCH_RUNTIME_DIR", None)
+                else:
+                    os.environ["ORCH_RUNTIME_DIR"] = previous_runtime_dir
+
+    async def test_retryable_motion_error_is_retried_before_job_fails(self):
+        class FlakyRetryableMotionAdapter:
+            provider_id = "test_retryable_motion"
+            modality = "motion"
+            max_concurrency = 1
+
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def validate(self, uir: dict) -> None:
+                return None
+
+            def run(self, uir: dict, out_dir: Path, reporter) -> dict:
+                del uir, out_dir, reporter
+                self.calls += 1
+                if self.calls == 1:
+                    return {
+                        "ok": False,
+                        "provider": self.provider_id,
+                        "artifacts": [],
+                        "meta": {},
+                        "warnings": [],
+                        "error": {
+                            "code": "E_MODEL_RUNTIME",
+                            "message": "cold start",
+                            "detail": {"attempt": self.calls},
+                            "retryable": True,
+                        },
+                    }
+                return {
+                    "ok": True,
+                    "provider": self.provider_id,
+                    "artifacts": [],
+                    "meta": {"attempt": self.calls},
+                    "warnings": [],
+                    "error": None,
+                }
+
+        with TemporaryDirectory() as temp_dir:
+            previous_runtime_dir = os.environ.get("ORCH_RUNTIME_DIR")
+            os.environ["ORCH_RUNTIME_DIR"] = temp_dir
+            try:
+                store = JobStore()
+                job = store.create_job(_motion_only_uir())
+                queue = await EVENT_BUS.subscribe(job.job_id)
+                adapter = FlakyRetryableMotionAdapter()
+                try:
+                    from unittest.mock import patch
+
+                    with patch(
+                        "services.orchestrator.src.scheduler.worker.get_adapter",
+                        return_value=adapter,
+                    ):
+                        await _run_job(store, job.job_id)
+
+                    events = []
+                    while True:
+                        try:
+                            event = await asyncio.wait_for(queue.get(), timeout=0.05)
+                        except TimeoutError:
+                            break
+                        events.append(event)
+
+                    self.assertEqual(adapter.calls, 2)
+                    self.assertNotIn("failed", [event["event"] for event in events])
+                    completed = store.get_job(job.job_id)
+                    self.assertIsNotNone(completed)
+                    self.assertEqual(completed.status, JobStatus.DONE)
+                finally:
+                    await EVENT_BUS.unsubscribe(job.job_id, queue)
             finally:
                 if previous_runtime_dir is None:
                     os.environ.pop("ORCH_RUNTIME_DIR", None)

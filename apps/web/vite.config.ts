@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_");
-  const proxyTarget = env.VITE_DEV_PROXY_TARGET || "http://localhost:8000";
+  const proxyTarget = env.VITE_DEV_PROXY_TARGET || "http://localhost:8200" || "http://localhost:8000";
   const base = env.VITE_BASE && env.VITE_BASE.trim() !== "" ? env.VITE_BASE : "/";
 
   return {

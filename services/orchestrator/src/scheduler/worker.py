@@ -55,6 +55,9 @@ _GPU_STAGES = {
     JobStatus.EXPORTING_VIDEO,
 }
 
+_MAX_RETRYABLE_STAGE_ATTEMPTS = 2
+_RETRYABLE_STAGE_DELAY_S = 0.25
+
 
 async def enqueue_job(job_id: str) -> None:
     await JOB_QUEUE.put(job_id)
@@ -189,41 +192,70 @@ async def _run_job(store: JobStore, job_id: str) -> None:
                     error,
                 )
                 return
-            try:
-                result = await _run_adapter(
-                    adapter,
-                    provider_id,
-                    job.uir,
-                    job_dir,
-                    reporter,
-                    stage,
-                    progress_range,
-                    cancel_token,
-                )
-            except AdapterCanceled:
-                await _mark_canceled(store, reporter, job_id)
-                return
-            except Exception as exc:
-                error = build_error(
-                    "E_MODEL_RUNTIME",
-                    "adapter execution failed",
-                    detail={"error": str(exc), "provider_id": provider_id},
-                    retryable=True,
-                )
-                await _fail_job(
-                    store,
-                    reporter,
-                    job_id,
-                    _current_progress(store, job_id, start),
-                    f"{modality} failed",
-                    error,
-                )
-                return
-            if _is_canceled(store, job_id):
-                await _mark_canceled(store, reporter, job_id)
-                return
-            if not _result_ok(result):
+            result = None
+            attempt = 0
+            while True:
+                attempt += 1
+                try:
+                    result = await _run_adapter(
+                        adapter,
+                        provider_id,
+                        job.uir,
+                        job_dir,
+                        reporter,
+                        stage,
+                        progress_range,
+                        cancel_token,
+                    )
+                except AdapterCanceled:
+                    await _mark_canceled(store, reporter, job_id)
+                    return
+                except Exception as exc:
+                    error = build_error(
+                        "E_MODEL_RUNTIME",
+                        "adapter execution failed",
+                        detail={"error": str(exc), "provider_id": provider_id},
+                        retryable=True,
+                    )
+                    if _should_retry_stage(error, attempt):
+                        await _report_stage_retry(
+                            store,
+                            reporter,
+                            job_id,
+                            stage,
+                            start,
+                            modality,
+                            attempt,
+                            error,
+                        )
+                        continue
+                    await _fail_job(
+                        store,
+                        reporter,
+                        job_id,
+                        _current_progress(store, job_id, start),
+                        f"{modality} failed",
+                        error,
+                    )
+                    return
+                if _is_canceled(store, job_id):
+                    await _mark_canceled(store, reporter, job_id)
+                    return
+                if _result_ok(result):
+                    break
                 error = _result_error(result, provider_id)
+                if _should_retry_stage(error, attempt):
+                    await _report_stage_retry(
+                        store,
+                        reporter,
+                        job_id,
+                        stage,
+                        start,
+                        modality,
+                        attempt,
+                        error,
+                    )
+                    continue
                 await _fail_job(
                     store,
                     reporter,
@@ -406,6 +438,36 @@ def _normalize_error(error: Any, fallback: Dict[str, Any]) -> Dict[str, Any]:
         "detail": detail,
         "retryable": bool(retryable),
     }
+
+
+def _should_retry_stage(error: Dict[str, Any], attempt: int) -> bool:
+    if not bool(error.get("retryable")):
+        return False
+    return attempt < _MAX_RETRYABLE_STAGE_ATTEMPTS
+
+
+async def _report_stage_retry(
+    store: JobStore,
+    reporter: ProgressReporter,
+    job_id: str,
+    stage: JobStatus,
+    fallback_progress: float,
+    modality: str,
+    attempt: int,
+    error: Dict[str, Any],
+) -> None:
+    next_attempt = attempt + 1
+    code = str(error.get("code") or "unknown")
+    message = str(error.get("message") or "retryable failure")
+    await reporter.log(
+        f"{modality} attempt {attempt} failed with {code}: {message}; retrying {next_attempt}/{_MAX_RETRYABLE_STAGE_ATTEMPTS}"
+    )
+    await reporter.status(
+        stage,
+        _current_progress(store, job_id, fallback_progress),
+        f"{modality} retrying ({next_attempt}/{_MAX_RETRYABLE_STAGE_ATTEMPTS})",
+    )
+    await asyncio.sleep(_RETRYABLE_STAGE_DELAY_S * attempt)
 
 
 def _resolve_provider_id(uir: Dict[str, Any], modality: str) -> Optional[str]:

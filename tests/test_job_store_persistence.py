@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -30,6 +31,38 @@ def _base_uir(job_id: str) -> dict:
 
 
 class TestJobStorePersistence(unittest.TestCase):
+    def test_module_import_restores_snapshots_without_name_error(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            old_runtime_dir = os.environ.get("ORCH_RUNTIME_DIR")
+            try:
+                os.environ["ORCH_RUNTIME_DIR"] = temp_dir
+                seeded_store = JobStore()
+                job_id = f"job_{uuid4().hex}"
+                seeded_store.create_job(_base_uir(job_id))
+
+                script = (
+                    "import os\n"
+                    "os.environ['ORCH_RUNTIME_DIR'] = r'{}'\n"
+                    "import services.orchestrator.src.scheduler.store\n"
+                ).format(temp_dir)
+                result = subprocess.run(
+                    [sys.executable, "-c", script],
+                    cwd=str(ROOT),
+                    capture_output=True,
+                    text=True,
+                )
+
+                self.assertEqual(
+                    result.returncode,
+                    0,
+                    msg=f"stderr:\n{result.stderr}\nstdout:\n{result.stdout}",
+                )
+            finally:
+                if old_runtime_dir is None:
+                    os.environ.pop("ORCH_RUNTIME_DIR", None)
+                else:
+                    os.environ["ORCH_RUNTIME_DIR"] = old_runtime_dir
+
     def test_jobs_restore_after_store_recreation(self) -> None:
         with TemporaryDirectory() as temp_dir:
             old_runtime_dir = os.environ.get("ORCH_RUNTIME_DIR")

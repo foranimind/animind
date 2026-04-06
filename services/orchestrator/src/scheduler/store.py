@@ -204,10 +204,6 @@ class JobStore:
         assert self._db_path is not None
         upsert_job(self._db_path, job.job_id, _job_snapshot(job))
 
-
-JOB_STORE = JobStore()
-
-
 def _assign_asset(
     assets: Dict[str, Any],
     kind: str,
@@ -331,3 +327,6 @@ def _coerce_str_list(value: Any) -> List[str]:
     if not isinstance(value, list):
         return []
     return [str(item) for item in value]
+
+
+JOB_STORE = JobStore()

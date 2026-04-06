@@ -326,6 +326,35 @@ describe("AppSidebar", () => {
     expect(container.querySelector(".session-menu.open")).toBeFalsy();
   });
 
+  it("allows the opened session menu to escape the session card bounds", async () => {
+    const user = userEvent.setup();
+    const now = new Date().toISOString();
+    const detail = buildDefaultSessionDetail("sess-menu-visibility", now);
+    detail.status = "done";
+    detail.jobId = "job-menu";
+    detail.lastPrompt = "Menu visibility";
+
+    saveSessionDetail(detail);
+    setActiveSessionId(detail.id);
+
+    render(
+      <MemoryRouter initialEntries={["/studio"]}>
+        <AppSidebar />
+      </MemoryRouter>
+    );
+
+    const sessionButton = screen.getByRole("button", { name: "Menu visibility" });
+    const actions = sessionButton.querySelector(".session-actions");
+    if (!(actions instanceof HTMLElement)) {
+      throw new Error("Missing session actions");
+    }
+    const trigger = within(actions).getByRole("button", { name: "更多操作" });
+
+    await user.click(trigger);
+
+    expect(getComputedStyle(sessionButton).overflow).toBe("visible");
+  });
+
   it("keeps the studio rail landmark and collapse control available", () => {
     const now = new Date().toISOString();
     const detail = buildDefaultSessionDetail("sess-draft", now);

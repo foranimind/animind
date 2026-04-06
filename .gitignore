@@ -180,8 +180,13 @@ runtime/
 **/.playwright-cli/
 test-results/
 **/test-results/
+output/
 output/playwright/
 **/output/playwright/
+
+# Local one-off tooling and generated review assets
+tools/ppt_assets/
+docs/superpowers/
 
 # Local planning and audit notes
 findings.md

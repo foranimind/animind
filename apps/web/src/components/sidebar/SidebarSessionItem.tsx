@@ -33,6 +33,7 @@ export const SidebarSessionItem = ({
     title={title}
     aria-label={title}
     className={`session-item ${statusClass} ${isActive ? "active" : ""}${isMenuOpen ? " menu-open" : ""}`}
+    style={isMenuOpen ? { overflow: "visible" } : undefined}
     onClick={onSelect}
     onKeyDown={onKeyDown}
   >
