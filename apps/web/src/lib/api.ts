@@ -160,6 +160,7 @@ const fetchJson = async <T>(url: string, options: FetchOptions = {}): Promise<T>
 
 const createJobResponseSchema = z.object({
   job_id: z.string(),
+  queue_position: z.number().optional(),
 });
 
 type CreateJobResponse = z.infer<typeof createJobResponseSchema>;

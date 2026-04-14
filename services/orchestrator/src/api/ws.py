@@ -6,6 +6,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ..scheduler.events import EVENT_BUS
 from ..scheduler.store import JOB_STORE
+from ..scheduler.worker import get_queue_position
 
 router = APIRouter()
 _LOGS_TAIL_LIMIT = 8
@@ -48,6 +49,7 @@ def _job_payload(job: Any, event_name: Optional[str], event_data: Any) -> Dict[s
         "message": message,
         "hint": message,
         "logs_tail": logs_tail,
+        "queue_position": get_queue_position(job.job_id),
     }
     if event_name == "failed":
         payload["error"] = message or "job failed"

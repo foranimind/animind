@@ -278,6 +278,12 @@ export const useJobRunner = (
     try {
       const response = await createJob(trimmed, options);
       setJobId(response.job_id);
+      if (response.queue_position !== undefined) {
+        setJobStatus((prev) => ({
+          ...(prev ?? { status: "QUEUED", progress: 0, stage: "QUEUED" }),
+          queue_position: response.queue_position,
+        }));
+      }
       subscriptionRef.current = subscribeJobEvents(
         response.job_id,
         (event) => {
@@ -359,12 +365,12 @@ export const useJobRunner = (
       stopPolling();
       return;
     }
-    if (connectionState === "disconnected") {
-      startPolling(jobId, tokenRef.current);
-    } else {
+    if (jobStatus && isTerminalJobStatus(jobStatus.status)) {
       stopPolling();
+      return;
     }
-  }, [connectionState, jobId, startPolling, stopPolling]);
+    startPolling(jobId, tokenRef.current);
+  }, [jobId, jobStatus, startPolling, stopPolling]);
 
   useEffect(() => {
     if (jobStatus && isTerminalJobStatus(jobStatus.status)) {

@@ -3,7 +3,7 @@
 # Animind 数字人动画生成平台
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](<./项目 GitGitHub 协作开发与维护指南.md>)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 
 Animind 是一套面向数字人动画与多模态生成的本地化工作流，涵盖任务编排后端、Web 前端与模型适配器。系统以 UIR（统一中间表示）驱动 scene/motion/music/character/preview/export 等模块，实现从提示词到资产生成、预览与导出的全流程。
 
@@ -43,8 +43,6 @@ Animind 是一套面向数字人动画与多模态生成的本地化工作流，
 - `runtime` - 运行时产物 (assets/cache/logs)
 - `third_party` - 第三方模型子模块
 - `tools` - 工具与第三方组件
-- `apps/web-legacy` - 旧版前端 (仅参考)
-- `animation_back.py` - 旧版后端脚本 (保留)
 
 <a id="requirements"></a>
 ## 环境要求
@@ -282,12 +280,13 @@ npm run test
 - `docs/relay_design.md` - Relay 设计说明（本地 GPU 中继）
 - `services/orchestrator/README.md` - 后端本地 smoke test
 - `apps/web/README.md` - 前端说明
-- `项目 GitGitHub 协作开发与维护指南.md` - 团队协作与维护规范
+- `CONTRIBUTING.md` - 仓库协作约定
+- `docs/process/github-collaboration-guide.zh-CN.md` - 迁移后的中文协作过程文档
 
 <a id="contributing"></a>
 ## 贡献
 
-欢迎通过 Issue 或 PR 参与贡献。提交前请阅读 `项目 GitGitHub 协作开发与维护指南.md`，确保分支、提交与评审流程一致。
+欢迎通过 Issue 或 PR 参与贡献。提交前请阅读 `CONTRIBUTING.md`，确保分支、提交与评审流程一致。
 
 <a id="license"></a>
 ## 许可证

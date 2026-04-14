@@ -17,6 +17,8 @@ from ..storage.manifest import make_asset_url, write_manifest
 JOB_QUEUE: asyncio.Queue[str] = asyncio.Queue()
 GPU_SEMAPHORE = asyncio.Semaphore(1)
 _PROVIDER_SEMAPHORES: Dict[str, asyncio.Semaphore] = {}
+_ACTIVE_JOB_ID: Optional[str] = None
+_PENDING_JOB_IDS: List[str] = []
 
 _PIPELINE: Iterable[Tuple[JobStatus, float, Tuple[float, float]]] = (
     (JobStatus.PLANNING, 0.4, (0.0, 0.1)),
@@ -59,16 +61,64 @@ _MAX_RETRYABLE_STAGE_ATTEMPTS = 2
 _RETRYABLE_STAGE_DELAY_S = 0.25
 
 
-async def enqueue_job(job_id: str) -> None:
-    await JOB_QUEUE.put(job_id)
+async def enqueue_job(job_id: str) -> int:
+    if _ACTIVE_JOB_ID != job_id and job_id not in _PENDING_JOB_IDS:
+        _PENDING_JOB_IDS.append(job_id)
+        await JOB_QUEUE.put(job_id)
+    position = get_queue_position(job_id)
+    return position if position is not None else 1
+
+
+def get_queue_position(job_id: str) -> Optional[int]:
+    if _ACTIVE_JOB_ID == job_id:
+        return 1
+    try:
+        index = _PENDING_JOB_IDS.index(job_id)
+    except ValueError:
+        return None
+    return index + (2 if _ACTIVE_JOB_ID is not None else 1)
+
+
+def _activate_job(job_id: str) -> None:
+    global _ACTIVE_JOB_ID
+    _discard_pending_job(job_id)
+    _ACTIVE_JOB_ID = job_id
+
+
+def _clear_active_job(job_id: str) -> None:
+    global _ACTIVE_JOB_ID
+    if _ACTIVE_JOB_ID == job_id:
+        _ACTIVE_JOB_ID = None
+
+
+def _discard_pending_job(job_id: str) -> None:
+    try:
+        _PENDING_JOB_IDS.remove(job_id)
+    except ValueError:
+        return
+
+
+def _reset_queue_state() -> None:
+    global _ACTIVE_JOB_ID
+    _ACTIVE_JOB_ID = None
+    _PENDING_JOB_IDS.clear()
+    while not JOB_QUEUE.empty():
+        try:
+            JOB_QUEUE.get_nowait()
+        except asyncio.QueueEmpty:
+            break
+        else:
+            JOB_QUEUE.task_done()
 
 
 async def worker_loop(store: JobStore) -> None:
     while True:
         job_id = await JOB_QUEUE.get()
+        _activate_job(job_id)
         try:
             await _run_job(store, job_id)
         finally:
+            _clear_active_job(job_id)
             JOB_QUEUE.task_done()
 
 

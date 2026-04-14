@@ -8,7 +8,7 @@ from ..scheduler.events import EVENT_BUS
 from ..scheduler.models import JobStatus
 from ..scheduler.reporter import ProgressReporter
 from ..scheduler.store import JOB_STORE
-from ..scheduler.worker import enqueue_job
+from ..scheduler.worker import enqueue_job, get_queue_position
 from ..uir.builder import build_uir_from_prompt
 
 router = APIRouter()
@@ -50,6 +50,7 @@ def _job_to_dict(job: Any) -> Dict[str, Any]:
         "manifest_path": job.manifest_path,
         "manifest_url": job.manifest_url,
         "stages": list(job.stages),
+        "queue_position": get_queue_position(job.job_id),
         "logs": logs,
         "logs_tail": _logs_tail(logs),
         "assets": dict(job.assets),
@@ -68,7 +69,7 @@ def _looks_like_prompt_payload(payload: Dict[str, Any]) -> bool:
 
 
 @router.post("")
-async def create_job(payload: Optional[Dict[str, Any]] = Body(default=None)) -> Dict[str, str]:
+async def create_job(payload: Optional[Dict[str, Any]] = Body(default=None)) -> Dict[str, Any]:
     if payload is None:
         payload = {}
     if not isinstance(payload, dict):
@@ -89,8 +90,8 @@ async def create_job(payload: Optional[Dict[str, Any]] = Body(default=None)) -> 
         job = JOB_STORE.create_job(uir or {})
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    await enqueue_job(job.job_id)
-    return {"job_id": job.job_id}
+    queue_position = await enqueue_job(job.job_id)
+    return {"job_id": job.job_id, "queue_position": queue_position}
 
 
 @router.get("/{job_id}")
@@ -139,6 +140,9 @@ async def job_events(job_id: str) -> StreamingResponse:
     async def event_stream() -> Any:
         queue = await EVENT_BUS.subscribe(job_id)
         try:
+            snapshot = JOB_STORE.get_job(job_id)
+            if snapshot:
+                yield _format_sse("status", _job_to_dict(snapshot))
             while True:
                 event = await queue.get()
                 yield _format_sse(event["event"], event["data"])

@@ -3,7 +3,7 @@
 # Animind Digital Human Animation Generation Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](<./项目 GitGitHub 协作开发与维护指南.md>)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 
 Animind is a localized workflow for digital human animation and multimodal generation, covering a task-orchestration backend, web frontend, and model adapters. The system uses UIR (Unified Intermediate Representation) to drive scene/motion/music/character/preview/export modules, enabling the full pipeline from prompt to asset generation, preview, and export.
 
@@ -43,8 +43,6 @@ Animind is a localized workflow for digital human animation and multimodal gener
 - `runtime` - Runtime outputs (assets/cache/logs)
 - `third_party` - Third-party model submodules
 - `tools` - Tools and third-party components
-- `apps/web-legacy` - Legacy frontend (reference only)
-- `animation_back.py` - Legacy backend script (kept)
 
 <a id="requirements"></a>
 ## Requirements
@@ -282,12 +280,13 @@ npm run test
 - `docs/relay_design.md` - Relay design (local GPU relay)
 - `services/orchestrator/README.md` - Backend local smoke test
 - `apps/web/README.md` - Frontend notes
-- `项目 GitGitHub 协作开发与维护指南.md` - Team collaboration and maintenance guide
+- `CONTRIBUTING.md` - Repository contribution guide
+- `docs/process/github-collaboration-guide.zh-CN.md` - Archived Chinese collaboration process guide
 
 <a id="contributing"></a>
 ## Contributing
 
-Issues and PRs are welcome. Please read `项目 GitGitHub 协作开发与维护指南.md` before submitting to follow the branch, commit, and review flow.
+Issues and PRs are welcome. Please read `CONTRIBUTING.md` before submitting to follow the branch, commit, and review flow.
 
 <a id="license"></a>
 ## License

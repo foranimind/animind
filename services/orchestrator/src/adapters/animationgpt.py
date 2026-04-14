@@ -3,11 +3,13 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import time
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -24,18 +26,213 @@ from ..uir.validate import validate_uir
 from ..utils.wsl import build_wsl_command, should_use_wsl, to_wsl_path, wsl_distro
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
-_ANIMATIONGPT_ROOT = Path(
-    os.getenv(
-        "ANIMATIONGPT_ROOT", str(_REPO_ROOT / "third_party" / "AnimationGPT")
+
+
+@dataclass(frozen=True)
+class _AnimationGPTRuntime:
+    animationgpt_root: Path
+    motiongpt_root: Path
+    demo_script: Path
+    config_path: Path
+    assets_config_path: Path
+    checkpoint_path: Path
+    npy_to_bvh_dir: Path
+    joints2bvh_path: Path
+
+
+def _animationgpt_root() -> Path:
+    return Path(
+        os.getenv(
+            "ANIMATIONGPT_ROOT", str(_REPO_ROOT / "third_party" / "AnimationGPT")
+        )
     )
-)
-_MOTIONGPT_ROOT = Path(
-    os.getenv("MOTIONGPT_ROOT", str(_ANIMATIONGPT_ROOT / "algorithm" / "MotionGPT"))
-)
-_DEMO_SCRIPT = _MOTIONGPT_ROOT / "demo.py"
-_CFG_PATH = _MOTIONGPT_ROOT / "config_AGPT.yaml"
-_NPY_TO_BVH_DIR = _ANIMATIONGPT_ROOT / "tools" / "npy2bvh"
-_JOINTS2BVH_PATH = _NPY_TO_BVH_DIR / "joints2bvh.py"
+
+
+def _motiongpt_root(animationgpt_root: Path) -> Path:
+    return Path(
+        os.getenv(
+            "MOTIONGPT_ROOT", str(animationgpt_root / "algorithm" / "MotionGPT")
+        )
+    )
+
+
+def _resolve_runtime_paths() -> _AnimationGPTRuntime:
+    animationgpt_root = _animationgpt_root()
+    motiongpt_root = _motiongpt_root(animationgpt_root)
+    demo_script = motiongpt_root / "demo.py"
+    npy_to_bvh_dir = animationgpt_root / "tools" / "npy2bvh"
+    joints2bvh_path = npy_to_bvh_dir / "joints2bvh.py"
+
+    config_path = _first_existing_path(
+        [
+            _path_from_env("ANIMATIONGPT_CFG"),
+            motiongpt_root / "config_AGPT.yaml",
+            animationgpt_root / "config_AGPT.yaml",
+        ]
+    )
+    if config_path is None:
+        config_path = motiongpt_root / "config_AGPT.yaml"
+
+    checkpoint_path = _first_existing_path(
+        _checkpoint_candidates(animationgpt_root, motiongpt_root, config_path)
+    )
+    if checkpoint_path is None:
+        checkpoint_path = motiongpt_root / "mGPT.ckpt"
+
+    return _AnimationGPTRuntime(
+        animationgpt_root=animationgpt_root,
+        motiongpt_root=motiongpt_root,
+        demo_script=demo_script,
+        config_path=config_path,
+        assets_config_path=motiongpt_root / "configs" / "assets.yaml",
+        checkpoint_path=checkpoint_path,
+        npy_to_bvh_dir=npy_to_bvh_dir,
+        joints2bvh_path=joints2bvh_path,
+    )
+
+
+def _path_from_env(env_name: str) -> Optional[Path]:
+    value = os.getenv(env_name)
+    if value and value.strip():
+        return Path(value.strip())
+    return None
+
+
+def _first_existing_path(paths: List[Optional[Path]]) -> Optional[Path]:
+    for path in paths:
+        if path is not None and path.exists():
+            return path
+    return None
+
+
+def _checkpoint_candidates(
+    animationgpt_root: Path, motiongpt_root: Path, config_path: Path
+) -> List[Optional[Path]]:
+    candidates: List[Optional[Path]] = [_path_from_env("ANIMATIONGPT_CKPT")]
+    configured = _configured_checkpoint_paths(config_path, motiongpt_root)
+    candidates.extend(configured)
+    candidates.extend(
+        [
+            motiongpt_root / "mGPT.ckpt",
+            animationgpt_root / "mGPT.ckpt",
+        ]
+    )
+    return candidates
+
+
+def _configured_checkpoint_paths(
+    config_path: Path, motiongpt_root: Path
+) -> List[Optional[Path]]:
+    raw = _configured_checkpoint_value(config_path)
+    if not raw:
+        return []
+    configured_path = Path(raw)
+    if configured_path.is_absolute():
+        return [configured_path]
+    return [motiongpt_root / configured_path, config_path.parent / configured_path]
+
+
+def _configured_checkpoint_value(config_path: Path) -> Optional[str]:
+    try:
+        content = config_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    match = re.search(r"^\s*CHECKPOINTS:\s*['\"]?([^'\"\r\n]+)['\"]?\s*$", content, re.MULTILINE)
+    if not match:
+        return None
+    value = match.group(1).strip()
+    return value or None
+
+
+def _yaml_single_quote(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _prepare_demo_cfg(
+    runtime: _AnimationGPTRuntime, output_dir: Path, *, use_wsl: bool
+) -> Path:
+    default_cfg_path = runtime.motiongpt_root / "config_AGPT.yaml"
+    default_ckpt_path = runtime.motiongpt_root / "mGPT.ckpt"
+    if runtime.config_path == default_cfg_path and runtime.checkpoint_path == default_ckpt_path:
+        return runtime.config_path
+
+    try:
+        content = runtime.config_path.read_text(encoding="utf-8")
+    except OSError:
+        return runtime.config_path
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    runtime_cfg_path = output_dir / "config_AGPT.runtime.yaml"
+    checkpoint_path = (
+        to_wsl_path(runtime.checkpoint_path) if use_wsl else str(runtime.checkpoint_path)
+    )
+    checkpoint_literal = _yaml_single_quote(checkpoint_path)
+    pattern = re.compile(r"(^\s*CHECKPOINTS:\s*).*$", re.MULTILINE)
+    if pattern.search(content):
+        content = pattern.sub(
+            lambda match: f"{match.group(1)}{checkpoint_literal}",
+            content,
+            count=1,
+        )
+    else:
+        content = content.rstrip() + f"\nTEST:\n  CHECKPOINTS: {checkpoint_literal}\n"
+    runtime_cfg_path.write_text(content, encoding="utf-8")
+    return runtime_cfg_path
+
+
+def _prepare_assets_cfg(runtime: _AnimationGPTRuntime, output_dir: Path) -> Path:
+    try:
+        content = runtime.assets_config_path.read_text(encoding="utf-8")
+    except OSError:
+        return runtime.assets_config_path
+
+    updated = content
+    if _use_nested_t2m_assets(runtime):
+        updated = updated.replace("MEAN_STD_PATH: deps/t2m/", "MEAN_STD_PATH: deps/t2m/t2m/")
+        updated = updated.replace("t2m_path: deps/t2m/", "t2m_path: deps/t2m/t2m/")
+    if _use_nested_glove_assets(runtime):
+        updated = updated.replace(
+            "WORD_VERTILIZER_PATH: deps/glove/",
+            "WORD_VERTILIZER_PATH: deps/t2m/glove/",
+        )
+    if updated == content:
+        return runtime.assets_config_path
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    runtime_assets_path = output_dir / "assets.runtime.yaml"
+    runtime_assets_path.write_text(updated, encoding="utf-8")
+    return runtime_assets_path
+
+
+def _use_nested_t2m_assets(runtime: _AnimationGPTRuntime) -> bool:
+    direct_meta = (
+        runtime.motiongpt_root
+        / "deps"
+        / "t2m"
+        / "t2m"
+        / "VQVAEV3_CB1024_CMT_H1024_NRES3"
+        / "meta"
+        / "mean.npy"
+    )
+    nested_meta = (
+        runtime.motiongpt_root
+        / "deps"
+        / "t2m"
+        / "t2m"
+        / "t2m"
+        / "VQVAEV3_CB1024_CMT_H1024_NRES3"
+        / "meta"
+        / "mean.npy"
+    )
+    return not direct_meta.exists() and nested_meta.exists()
+
+
+def _use_nested_glove_assets(runtime: _AnimationGPTRuntime) -> bool:
+    direct_glove = runtime.motiongpt_root / "deps" / "glove" / "our_vab_words.pkl"
+    nested_glove = (
+        runtime.motiongpt_root / "deps" / "t2m" / "glove" / "our_vab_words.pkl"
+    )
+    return not direct_glove.exists() and nested_glove.exists()
 
 
 class AnimationGPTAdapter(BaseAdapter):
@@ -129,6 +326,7 @@ class AnimationGPTAdapter(BaseAdapter):
             fps = _fps_from_motion(motion)
             duration_s = _duration_from_uir(uir, motion) or 0.0
             quality, quality_settings, quality_warning = _quality_settings_from_uir(uir)
+            runtime = _resolve_runtime_paths()
             if quality_warning:
                 warnings.append(quality_warning)
             if not prompt:
@@ -163,7 +361,7 @@ class AnimationGPTAdapter(BaseAdapter):
 
             reporter.stage("running", 0.5, "running AnimationGPT demo")
             start_time = time.time()
-            missing = _missing_dependencies()
+            missing = _missing_dependencies(runtime)
             if missing:
                 return _error_result(
                     self.provider_id,
@@ -175,18 +373,27 @@ class AnimationGPTAdapter(BaseAdapter):
                         retryable=False,
                     ),
                 )
+            assets_cfg_path = _prepare_assets_cfg(runtime, output_dir)
             demo_python = _resolve_python_exe()
             use_wsl = should_use_wsl(demo_python)
-            demo_env = _build_demo_env(uir, use_wsl=use_wsl)
-            demo_cmd = _build_demo_cmd(demo_python, example_path, use_wsl=use_wsl)
+            demo_cfg_path = _prepare_demo_cfg(runtime, output_dir, use_wsl=use_wsl)
+            demo_env = _build_demo_env(uir, runtime, use_wsl=use_wsl)
+            demo_cmd = _build_demo_cmd(
+                demo_python,
+                example_path,
+                runtime,
+                demo_cfg_path,
+                assets_cfg_path,
+                use_wsl=use_wsl,
+            )
             run_env = demo_env
-            demo_cwd: Optional[Path] = _MOTIONGPT_ROOT
+            demo_cwd: Optional[Path] = runtime.motiongpt_root
             if use_wsl:
                 demo_cmd = build_wsl_command(
                     demo_cmd,
                     env=demo_env,
                     distro=wsl_distro(),
-                    cwd=to_wsl_path(_MOTIONGPT_ROOT),
+                    cwd=to_wsl_path(runtime.motiongpt_root),
                 )
                 run_env = os.environ.copy()
                 demo_cwd = None
@@ -224,7 +431,7 @@ class AnimationGPTAdapter(BaseAdapter):
                 )
 
             try:
-                samples_dir = _find_latest_samples_dir(start_time)
+                samples_dir = _find_latest_samples_dir(start_time, runtime)
                 npy_path, multiple = _find_output_npy(samples_dir)
                 if multiple:
                     warnings.append(
@@ -267,6 +474,7 @@ class AnimationGPTAdapter(BaseAdapter):
                     fps=fps,
                     quality=quality,
                     quality_settings=quality_settings,
+                    runtime=runtime,
                     log_handle=log_handle,
                 )
             except ImportError as exc:
@@ -491,11 +699,13 @@ def _find_job_dir(out_dir: Path, job_id: str) -> Optional[Path]:
     return None
 
 
-def _build_demo_env(uir: Dict[str, Any], *, use_wsl: bool) -> Dict[str, str]:
+def _build_demo_env(
+    uir: Dict[str, Any], runtime: _AnimationGPTRuntime, *, use_wsl: bool
+) -> Dict[str, str]:
     env_overrides: Dict[str, str] = {"PYTHONIOENCODING": "utf-8"}
     python_paths = [
-        str(_MOTIONGPT_ROOT),
-        str(_ANIMATIONGPT_ROOT / "algorithm" / "HumanML3D"),
+        str(runtime.motiongpt_root),
+        str(runtime.animationgpt_root / "algorithm" / "HumanML3D"),
     ]
     existing = os.environ.get("PYTHONPATH")
     if existing:
@@ -508,6 +718,14 @@ def _build_demo_env(uir: Dict[str, Any], *, use_wsl: bool) -> Dict[str, str]:
     gpu_lock = _gpu_lock_from_uir(uir)
     if gpu_lock is not None:
         env_overrides["CUDA_VISIBLE_DEVICES"] = gpu_lock
+    force_weights_only = os.environ.get("TORCH_FORCE_WEIGHTS_ONLY_LOAD")
+    force_no_weights_only = os.environ.get("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD")
+    if force_weights_only:
+        env_overrides["TORCH_FORCE_WEIGHTS_ONLY_LOAD"] = force_weights_only
+    else:
+        env_overrides["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = (
+            force_no_weights_only or "1"
+        )
     if use_wsl:
         return env_overrides
     env = dict(os.environ)
@@ -516,15 +734,27 @@ def _build_demo_env(uir: Dict[str, Any], *, use_wsl: bool) -> Dict[str, str]:
 
 
 def _build_demo_cmd(
-    python_exe: str, example_path: Path, *, use_wsl: bool
+    python_exe: str,
+    example_path: Path,
+    runtime: _AnimationGPTRuntime,
+    config_path: Path,
+    assets_config_path: Path,
+    *,
+    use_wsl: bool,
 ) -> List[str]:
     python_bin = to_wsl_path(python_exe) if use_wsl else python_exe
-    path_mapper = to_wsl_path if use_wsl else str
+
+    def path_mapper(path: Path) -> str:
+        resolved = path.resolve()
+        return to_wsl_path(resolved) if use_wsl else str(resolved)
+
     return [
         python_bin,
-        path_mapper(_DEMO_SCRIPT),
+        path_mapper(runtime.demo_script),
         "--cfg",
-        path_mapper(_CFG_PATH),
+        path_mapper(config_path),
+        "--cfg_assets",
+        path_mapper(assets_config_path),
         "--example",
         path_mapper(example_path),
     ]
@@ -578,13 +808,13 @@ def _run_subprocess(
     return _SubprocessResult(return_code=completed.returncode, timed_out=False)
 
 
-def _find_latest_samples_dir(start_time: float) -> Path:
+def _find_latest_samples_dir(start_time: float, runtime: _AnimationGPTRuntime) -> Path:
     threshold = start_time - 2.0
     search_roots = [
-        _MOTIONGPT_ROOT / "results",
-        _MOTIONGPT_ROOT / "output",
-        _ANIMATIONGPT_ROOT / "results",
-        _MOTIONGPT_ROOT,
+        runtime.motiongpt_root / "results",
+        runtime.motiongpt_root / "output",
+        runtime.animationgpt_root / "results",
+        runtime.motiongpt_root,
     ]
     candidates: List[Tuple[float, Path]] = []
     for root in search_roots:
@@ -622,10 +852,14 @@ def _convert_npy_to_bvh(
     fps: int,
     quality: str,
     quality_settings: Dict[str, Any],
+    runtime: _AnimationGPTRuntime,
     log_handle: Any,
 ) -> int:
     import numpy as np
 
+    npy_path = npy_path.resolve()
+    bvh_path = bvh_path.resolve()
+    bvh_path.parent.mkdir(parents=True, exist_ok=True)
     joints = np.load(str(npy_path))
     if joints.ndim == 4 and joints.shape[0] == 1:
         joints = joints[0]
@@ -638,8 +872,8 @@ def _convert_npy_to_bvh(
         log_handle,
         f"[convert] quality={quality} iterations={iterations} foot_ik={foot_ik}",
     )
-    with _temp_sys_path(_NPY_TO_BVH_DIR), _pushd(_NPY_TO_BVH_DIR):
-        module = _load_joints2bvh_module()
+    with _temp_sys_path(runtime.npy_to_bvh_dir), _pushd(runtime.npy_to_bvh_dir):
+        module = _load_joints2bvh_module(runtime)
         with redirect_stdout(log_handle), redirect_stderr(log_handle):
             converter = module.Joint2BVHConvertor()
             anim, _ = converter.convert(
@@ -656,12 +890,12 @@ def _convert_npy_to_bvh(
     return int(joints.shape[0])
 
 
-def _load_joints2bvh_module() -> Any:
+def _load_joints2bvh_module(runtime: _AnimationGPTRuntime) -> Any:
     module = sys.modules.get("animationgpt_joints2bvh")
     if module is not None:
         return module
     spec = importlib.util.spec_from_file_location(
-        "animationgpt_joints2bvh", _JOINTS2BVH_PATH
+        "animationgpt_joints2bvh", runtime.joints2bvh_path
     )
     if spec is None or spec.loader is None:
         raise ImportError("unable to load joints2bvh module")
@@ -671,16 +905,16 @@ def _load_joints2bvh_module() -> Any:
     return module
 
 
-def _missing_dependencies() -> List[str]:
+def _missing_dependencies(runtime: _AnimationGPTRuntime) -> List[str]:
     missing: List[str] = []
-    if not _DEMO_SCRIPT.exists():
-        missing.append(str(_DEMO_SCRIPT))
-    if not _CFG_PATH.exists():
-        missing.append(str(_CFG_PATH))
-    if not (_MOTIONGPT_ROOT / "mGPT.ckpt").exists():
-        missing.append(str(_MOTIONGPT_ROOT / "mGPT.ckpt"))
-    if not _JOINTS2BVH_PATH.exists():
-        missing.append(str(_JOINTS2BVH_PATH))
+    if not runtime.demo_script.exists():
+        missing.append(str(runtime.demo_script))
+    if not runtime.config_path.exists():
+        missing.append(str(runtime.config_path))
+    if not runtime.checkpoint_path.exists():
+        missing.append(str(runtime.checkpoint_path))
+    if not runtime.joints2bvh_path.exists():
+        missing.append(str(runtime.joints2bvh_path))
     return missing
 
 

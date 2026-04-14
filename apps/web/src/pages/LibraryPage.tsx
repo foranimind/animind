@@ -7,12 +7,12 @@ import { WorkCard } from "../components/library/WorkCard";
 import { ActionButton } from "../components/ui/ActionButton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SurfacePanel } from "../components/ui/SurfacePanel";
-import { useRecentWorks } from "../hooks/useRecentWorks";
 import { useResourceMap } from "../hooks/useResourceMap";
+import { useSessions } from "../hooks/useSessions";
 import { fetchManifest } from "../lib/api";
 import { toErrorMessage } from "../lib/errors";
 import { getManifestSummary } from "../lib/manifestAssets";
-import { removeWork } from "../lib/storage";
+import { removeSession } from "../lib/storage";
 import "./pages.css";
 import "./library.css";
 import "../components/library/library.css";
@@ -66,8 +66,15 @@ const matchesDuration = (duration: number | undefined, filter: string) => {
 };
 
 export const LibraryPage = () => {
-  const { items } = useRecentWorks();
-  const jobIds = useMemo(() => items.map((item) => item.jobId), [items]);
+  const { items } = useSessions();
+  const archivedItems = useMemo(
+    () => items.filter((item) => item.status === "done" && Boolean(item.jobId)),
+    [items]
+  );
+  const jobIds = useMemo(
+    () => archivedItems.map((item) => item.jobId ?? "").filter((jobId) => jobId.length > 0),
+    [archivedItems]
+  );
   const mapError = useCallback(
     (error: unknown) => toErrorMessage(error, "加载清单失败。"),
     []
@@ -80,25 +87,36 @@ export const LibraryPage = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const works = useMemo<WorkSummary[]>(() => {
-    return items.map((item) => {
-      const entry = manifestMap[item.jobId];
+    return archivedItems.map((item) => {
+      const jobId = item.jobId ?? "";
+      const entry = manifestMap[jobId];
       const manifest = entry && entry.status === "ready" ? entry.data : undefined;
       const summary = getManifestSummary(manifest);
-      const title = summary.title ? truncate(summary.title) : `作品 ${item.jobId}`;
+      const title = item.title ? truncate(item.title) : summary.title ? truncate(summary.title) : `作品 ${jobId}`;
       return {
-        jobId: item.jobId,
+        jobId,
         title,
         prompt: summary.prompt,
         style: summary.style,
         duration: summary.duration,
-        status: summary.status,
-        createdAt: summary.createdAt ?? item.meta.createdAt,
-        thumbnailUri: summary.thumbnailUri,
+        status: summary.status ?? item.status,
+        createdAt: summary.createdAt ?? item.createdAt,
+        thumbnailUri: summary.thumbnailUri ?? item.previewUrl,
         loading: entry?.status === "loading",
         error: entry?.status === "error" ? entry.error : undefined,
       };
     });
-  }, [items, manifestMap]);
+  }, [archivedItems, manifestMap]);
+
+  const handleRemoveWork = useCallback(
+    (jobId: string) => {
+      const matchingSession = archivedItems.find((item) => item.jobId === jobId);
+      if (matchingSession) {
+        removeSession(matchingSession.id);
+      }
+    },
+    [archivedItems]
+  );
 
   const styleOptions = useMemo(() => {
     const styles = new Set<string>();
@@ -279,7 +297,7 @@ export const LibraryPage = () => {
               createdAt={work.createdAt}
               loading={work.loading}
               error={work.error}
-              onRemove={removeWork}
+              onRemove={handleRemoveWork}
             />
           ))}
         </div>

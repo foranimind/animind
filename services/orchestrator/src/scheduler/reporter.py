@@ -40,6 +40,8 @@ class ProgressReporter:
         if not job:
             return
         progress_value = _progress_percent(job.progress)
+        from .worker import get_queue_position
+
         data: Dict[str, Any] = {
             "job_id": self._job_id,
             "status": job.status.value,
@@ -47,6 +49,7 @@ class ProgressReporter:
             "progress": progress_value,
             "message": job.message,
             "stages": list(job.stages),
+            "queue_position": get_queue_position(self._job_id),
         }
         if payload is not None:
             data["payload"] = payload
