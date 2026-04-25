@@ -46,8 +46,8 @@ class MusicGPTCliAdapter(BaseAdapter):
                 build_error("E_VALIDATION_INPUT", str(exc), retryable=False),
             )
 
-        prompt = _prompt_from_music(_music_section(uir))
-        if not prompt:
+        prompt_original = _prompt_from_music(_music_section(uir))
+        if not prompt_original:
             return _error_result(
                 self.provider_id,
                 warnings,
@@ -69,6 +69,7 @@ class MusicGPTCliAdapter(BaseAdapter):
                 ),
             )
 
+        prompt_used = _build_music_prompt(uir, out_dir, job_id, prompt_original, warnings)
         exe_path = _resolve_musicgpt_bin()
         if exe_path is None:
             return _error_result(
@@ -90,7 +91,7 @@ class MusicGPTCliAdapter(BaseAdapter):
         reporter.stage("prepare", 0.1, "preparing MusicGPT input")
         cmd = [
             str(exe_path),
-            prompt,
+            prompt_used,
             "--secs",
             str(int(duration_s)),
             "--no-playback",
@@ -153,8 +154,8 @@ class MusicGPTCliAdapter(BaseAdapter):
             "sample_rate": sample_rate,
             "channels": channels,
             "provider": self.provider_id,
-            "prompt_original": prompt,
-            "prompt_used": prompt,
+            "prompt_original": prompt_original,
+            "prompt_used": prompt_used,
             "cmdline": " ".join(cmd),
         }
         try:
@@ -253,6 +254,15 @@ def _music_section(uir: Dict[str, Any]) -> Dict[str, Any]:
     return {}
 
 
+def _motion_section(uir: Dict[str, Any]) -> Dict[str, Any]:
+    modules = uir.get("modules")
+    if isinstance(modules, dict):
+        motion = modules.get("motion")
+        if isinstance(motion, dict):
+            return motion
+    return {}
+
+
 def _prompt_from_music(music: Dict[str, Any]) -> str:
     prompt = music.get("prompt")
     if isinstance(prompt, str):
@@ -289,3 +299,158 @@ def _find_job_dir(out_dir: Path, job_id: str) -> Optional[Path]:
         if parent.name == job_id:
             return parent
     return None
+
+
+def extract_motion_energy(npy_path: Path, fps: float = 20.0) -> tuple[List[float], List[int]]:
+    """
+    从 motion_out.npy 提取动作能量曲线与峰值帧索引。
+    兼容 (F, J, 3) 和 (1, F, J, 3) 两种输出。
+    """
+    import numpy as np
+    from scipy.signal import find_peaks
+
+    arr = np.load(npy_path, allow_pickle=True)
+    if arr.ndim == 4 and arr.shape[0] == 1:
+        arr = arr[0]
+    if arr.ndim != 3:
+        raise ValueError(f"Unexpected NPY shape: {arr.shape}, expected (F, J, 3)")
+    frames, _joints, coords = arr.shape
+    if coords != 3:
+        raise ValueError(f"Last dim must be 3 coordinates, got {coords}")
+    if frames < 2:
+        return [], []
+
+    velocity = np.linalg.norm(arr[1:] - arr[:-1], axis=2)
+    energy = velocity.mean(axis=1)
+
+    if len(energy) > 3:
+        kernel = np.ones(3, dtype=np.float32) / 3.0
+        energy_smooth = np.convolve(energy, kernel, mode="same")
+    else:
+        energy_smooth = energy
+
+    distance = max(1, int(fps * 0.25))
+    std_val = float(np.std(energy_smooth))
+    prominence = std_val * 0.1 if std_val > 0 else 0.0
+    peaks, _ = find_peaks(energy_smooth, distance=distance, prominence=prominence)
+    return energy_smooth.tolist(), peaks.tolist()
+
+
+def build_rhythm_prompt(
+    text_prompt: str, peaks: List[int], energy: List[float], fps: float = 20.0
+) -> str:
+    """
+    根据动作能量和峰值，生成 MusicGPT 能理解的节奏提示。
+    """
+    peaks = list(peaks or [])
+    energy = list(energy or [])
+
+    if energy:
+        avg_energy = float(sum(energy) / len(energy))
+        peak_energy = float(max(energy))
+    else:
+        avg_energy = 0.0
+        peak_energy = 0.0
+
+    if peak_energy <= 0 or avg_energy <= 0:
+        intensity_desc = (
+            "The overall motion intensity is relatively low, so the music can stay more subtle, "
+            "with soft rhythmic pulses and occasional accents that do not dominate the scene."
+        )
+    elif peak_energy > avg_energy * 1.6:
+        intensity_desc = (
+            "The action contains frequent high-energy impacts, so the music should stay fast, "
+            "intense, and rhythmic with strong percussion and clearly defined downbeats."
+        )
+    else:
+        intensity_desc = (
+            "The action has moderate intensity, so the music should maintain a clear beat with "
+            "regular accents, balancing tension and breathing space."
+        )
+
+    if not peaks:
+        return (
+            "Generate background music for a combat animation.\n\n"
+            "Action description:\n"
+            f"{text_prompt}\n\n"
+            "Rhythm alignment instructions:\n"
+            "- Use a clear, steady beat that matches the overall pace of the movement.\n"
+            "- Emphasize stronger drum hits during visually intense moments of the motion.\n"
+            "- Keep a coherent tempo suitable for action scenes.\n"
+            "- Style suggestion: If no specific style was provided, use an epic battle style with percussion accents.\n\n"
+            f"{intensity_desc}"
+        )
+
+    offset_frames = max(1, int(0.5 * fps))
+    adjusted_peaks = [max(0, int(peak) - offset_frames) for peak in peaks]
+    peak_times = [round(peak / fps, 2) for peak in adjusted_peaks]
+    peak_times_short = peak_times[:6]
+    peak_str = ", ".join(f"{t}s" for t in peak_times_short)
+
+    return (
+        "Generate background music for a combat animation.\n\n"
+        "Action description:\n"
+        f"{text_prompt}\n\n"
+        "Rhythm alignment instructions:\n"
+        f"- Rhythmic hits should occur on the downbeats at {peak_str}.\n"
+        f"- Place clear percussive hits (e.g., low drum or impact sounds) exactly at each of: {peak_str}.\n"
+        "- Treat these times as the main rhythmic anchors, keeping the core beat locked to these impacts.\n"
+        "- Between these impacts, keep a driving rhythm that smoothly connects one hit to the next.\n"
+        "- Keep the tempo consistent and suitable for an action / battle scene.\n"
+        "- Style suggestion: epic orchestral battle music with strong drums and percussion, supporting the sense of momentum.\n\n"
+        f"{intensity_desc}"
+    )
+
+
+def _build_music_prompt(
+    uir: Dict[str, Any],
+    out_dir: Path,
+    job_id: str,
+    prompt_original: str,
+    warnings: List[str],
+) -> str:
+    motion = _motion_section(uir)
+    motion_prompt = motion.get("prompt")
+    if not isinstance(motion_prompt, str) or not motion_prompt.strip():
+        return prompt_original
+
+    job_dir = _find_job_dir(out_dir, job_id) or out_dir
+    motion_npy = _find_motion_npy(job_dir)
+    if motion_npy is None:
+        return prompt_original
+
+    fps = _motion_fps(motion)
+    try:
+        energy, peaks = extract_motion_energy(motion_npy, fps=fps)
+    except Exception as exc:
+        warnings.append(f"motion rhythm adapter skipped: {exc}")
+        return prompt_original
+
+    rhythm_prompt = build_rhythm_prompt(motion_prompt.strip(), peaks, energy, fps=fps)
+    return (
+        "Create background music for the following animation.\n\n"
+        "Music style requirement:\n"
+        f"{prompt_original}\n\n"
+        f"{rhythm_prompt}"
+    )
+
+
+def _find_motion_npy(job_dir: Path) -> Optional[Path]:
+    fallback = job_dir / "motion" / "motion_out.npy"
+    if fallback.exists():
+        return fallback
+    motion_dir = job_dir / "motion"
+    if not motion_dir.exists():
+        return None
+    matches = sorted(motion_dir.glob("*_out.npy"), key=lambda path: path.stat().st_mtime)
+    if matches:
+        return matches[-1]
+    return None
+
+
+def _motion_fps(motion: Dict[str, Any]) -> float:
+    fps = motion.get("fps", 30)
+    try:
+        return float(fps)
+    except (TypeError, ValueError):
+        return 30.0
