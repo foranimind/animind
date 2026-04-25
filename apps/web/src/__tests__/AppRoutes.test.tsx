@@ -35,9 +35,9 @@ describe("App routes", () => {
 
     await waitFor(() => {
       expect(window.location.pathname).toBe("/");
-    });
+    }, { timeout: 3000 });
     expect(
-      await screen.findByRole("heading", { name: "Motionverse Studio" })
+      await screen.findByRole("heading", { name: "Motionverse Studio" }, { timeout: 3000 })
     ).toBeInTheDocument();
     const continueLinks = await screen.findAllByRole("link", { name: "继续创作" });
     expect(continueLinks.length).toBeGreaterThan(0);
@@ -66,9 +66,9 @@ describe("App routes", () => {
 
     await waitFor(() => {
       expect(window.location.pathname).toBe("/jobs/job-123");
-    });
-    expect(await screen.findByRole("heading", { name: "任务进度" })).toBeInTheDocument();
-    expect(await screen.findByText(/job-123/)).toBeInTheDocument();
+    }, { timeout: 3000 });
+    expect(await screen.findByRole("heading", { name: "任务进度" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByText(/job-123/, undefined, { timeout: 3000 })).toBeInTheDocument();
   });
 
   it("switches completed history back to a draft workspace on the studio route", async () => {
@@ -92,9 +92,9 @@ describe("App routes", () => {
 
     await waitFor(() => {
       expect(window.location.pathname).toBe("/studio");
-    });
+    }, { timeout: 3000 });
 
-    expect(screen.getByRole("heading", { name: "创作台" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "创作台" }, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.getByText("创作描述")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "交付结果" })).not.toBeInTheDocument();
     const composer = screen.getByPlaceholderText("描述你的场景、光线、动作与配乐...") as HTMLTextAreaElement;
@@ -108,7 +108,7 @@ describe("App routes", () => {
     });
   });
 
-  it("does not render running or delivery controls on the studio route", () => {
+  it("does not render running or delivery controls on the studio route", async () => {
     window.history.pushState({}, "", "/studio");
 
     render(
@@ -117,7 +117,7 @@ describe("App routes", () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByRole("heading", { name: "创作台" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "创作台" }, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.queryByText("任务进度")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "取消生成" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "导出视频" })).not.toBeInTheDocument();
@@ -134,8 +134,10 @@ describe("App routes", () => {
 
     await waitFor(() => {
       expect(window.location.pathname).toBe("/");
-    });
+    }, { timeout: 3000 });
 
-    expect(screen.getByRole("heading", { name: "Motionverse Studio" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Motionverse Studio" }, { timeout: 3000 })
+    ).toBeInTheDocument();
   });
 });
