@@ -37,7 +37,7 @@ describe("App routes", () => {
       expect(window.location.pathname).toBe("/");
     });
     expect(
-      await screen.findByRole("heading", { name: "Animind Studio" })
+      await screen.findByRole("heading", { name: "Motionverse Studio" })
     ).toBeInTheDocument();
     const continueLinks = await screen.findAllByRole("link", { name: "继续创作" });
     expect(continueLinks.length).toBeGreaterThan(0);
@@ -136,6 +136,6 @@ describe("App routes", () => {
       expect(window.location.pathname).toBe("/");
     });
 
-    expect(screen.getByRole("heading", { name: "Animind Studio" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Motionverse Studio" })).toBeInTheDocument();
   });
 });

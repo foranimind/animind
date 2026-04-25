@@ -47,9 +47,9 @@ describe("App lazy welcome route", () => {
     ).toBeInTheDocument();
 
     resolveModule?.({
-      WelcomePage: () => <h1>Animind Studio</h1>,
+      WelcomePage: () => <h1>Motionverse Studio</h1>,
     });
 
-    expect(await screen.findByRole("heading", { name: "Animind Studio" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Motionverse Studio" })).toBeInTheDocument();
   });
 });
