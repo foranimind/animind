@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .settings import get_settings
 
-_REPO_ROOT = Path(__file__).resolve().parents[5]
+_REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
 @dataclass(frozen=True)

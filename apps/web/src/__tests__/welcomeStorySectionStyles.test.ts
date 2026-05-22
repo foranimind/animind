@@ -43,6 +43,15 @@ describe("welcomeStorySection styles", () => {
     expect(WELCOME_PAGE_CSS).toContain("line-height: 0.92;");
   });
 
+  it("lets the welcome page title use the available hero width instead of forcing a narrow text column", () => {
+    expect(WELCOME_PAGE_CSS).toContain("width: auto;");
+    expect(WELCOME_PAGE_CSS).toContain("max-width: 100%;");
+    expect(WELCOME_PAGE_CSS).not.toContain("width: min(100%, 12ch);");
+    expect(WELCOME_PAGE_CSS).not.toContain("max-width: 12ch;");
+    expect(WELCOME_PAGE_CSS).not.toContain("width: min(100%, 10.2ch);");
+    expect(WELCOME_PAGE_CSS).not.toContain("max-width: 10.2ch;");
+  });
+
   it("expands the story title line boxes so serif caps are not clipped", () => {
     expect(WELCOME_STORY_SECTION_CSS).toContain("padding-block-start: 0.08em;");
     expect(WELCOME_STORY_SECTION_CSS).toContain("padding-block-end: 0.04em;");

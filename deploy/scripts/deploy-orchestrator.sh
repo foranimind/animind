@@ -7,6 +7,8 @@ WEB_ROOT=/srv/animind/web
 mkdir -p "$APP_ROOT" "$WEB_ROOT"
 rsync -a --delete ./ "$APP_ROOT"/
 
+pip install -r "$APP_ROOT/requirements.txt"
+
 cd "$APP_ROOT/apps/web"
 npm ci
 npm run build

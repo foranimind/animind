@@ -282,8 +282,8 @@
   line-height: 0.92;
   letter-spacing: -0.045em;
   text-wrap: balance;
-  width: min(100%, 12ch);
-  max-width: 12ch;
+  width: auto;
+  max-width: 100%;
   text-shadow: var(--welcome-display-shadow);
 }
 
@@ -525,8 +525,6 @@
     font-size: clamp(2.6rem, 12.4vw, 3.9rem);
     line-height: 0.92;
     letter-spacing: -0.058em;
-    width: min(100%, 10.2ch);
-    max-width: 10.2ch;
   }
 
   .welcome-subtitle {
