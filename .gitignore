@@ -115,6 +115,8 @@ coverage/
 *.temp
 .temp/
 .tmp/
+/tmp/
+/tmp_*
 
 # Database
 *.db
@@ -172,6 +174,7 @@ runtime/
 # AI
 .agents/
 .codex/
+.codex_work/
 .superpowers/
 .worktrees/
 

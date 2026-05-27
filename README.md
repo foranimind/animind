@@ -31,6 +31,7 @@ Animind 是一套面向数字人动画与多模态生成的本地化工作流，
 - Orchestrator 编排：任务队列、阶段化状态机、进度与日志、SSE/WS 事件流、manifest 资源清单
 - 多模型适配：AnimationGPT（motion）、Diffusion360（scene）、MusicGPT（music）、内置角色库（character）、Three.js 预览配置、ffmpeg 导出
 - 本地化运行：Windows/Linux 原生运行；必要时可通过 WSL 调用 Linux 环境模型
+- 云端延伸：支持通过 Relay 将重型模型执行留在本地 GPU 机器，并由云端 Orchestrator 统一调度
 - 前端体验：React + Vite + Three.js，支持 Mock 模式与本地预览
 
 <a id="structure"></a>
@@ -38,6 +39,8 @@ Animind 是一套面向数字人动画与多模态生成的本地化工作流，
 
 - `apps/web` - 新版 Web 前端
 - `services/orchestrator` - 后端编排服务
+- `services/relay` - 本地 GPU 中继服务（可选，云端部署时使用）
+- `deploy` - 环境示例、systemd、Nginx 与部署脚本
 - `docs` - API/UIR/Relay 设计文档
 - `tests` - 后端单元测试
 - `runtime` - 运行时产物 (assets/cache/logs)
@@ -164,6 +167,19 @@ export WSL_DISTRO=Ubuntu
 
 提示：当 `ANIMATIONGPT_PYTHON` 或 `DIFFUSION360_PYTHON` 指向 Linux 路径（如 `/home/...` 或 `\\wsl$\\...`）时，系统会自动通过 WSL 执行。
 
+### 7) Relay 环境变量（可选，云端部署模式）
+
+当你需要“云端入口 + 本地 GPU 执行”时，再配置 Relay：
+
+| 变量 | 说明 | 默认/备注 |
+| --- | --- | --- |
+| `RELAY_SHARED_TOKEN` | Relay 入站鉴权 token | 必填 |
+| `RELAY_RUNTIME_DIR` | Relay 运行目录 | 默认 `relay_runtime` |
+| `ORCHESTRATOR_BASE_URL` | 云端 orchestrator 地址 | 必填 |
+| `ORCHESTRATOR_RELAY_TOKEN` | Relay 回传时使用的 token | 应与共享 token 对齐 |
+
+示例文件见：`deploy/env/animind.relay.env.example`。
+
 <a id="start"></a>
 ## 启动服务
 
@@ -186,6 +202,12 @@ python -m uvicorn services.orchestrator.src.main:app --reload --port 8000
 ```bash
 cd apps/web
 npm run dev
+```
+
+Relay（可选）：
+
+```bash
+python -m uvicorn services.relay.src.main:app --host 0.0.0.0 --port 9000
 ```
 
 浏览器访问：`http://localhost:5173`
@@ -256,6 +278,12 @@ curl -X POST "http://localhost:8000/api/jobs" \
   -d "{\"prompt\":\"A warrior dashes forward\",\"options\":{\"targets\":[\"motion\",\"music\"],\"duration_s\":8}}"
 ```
 
+如启用 Relay，可额外执行：
+
+```bash
+python tools/smoke/smoke_relay_task.py --base-url http://127.0.0.1:9000 --token "$RELAY_SHARED_TOKEN"
+```
+
 <a id="tests"></a>
 ## 测试
 
@@ -278,7 +306,9 @@ npm run test
 - `docs/api.md` - API 约定
 - `docs/uir_schema.md` - UIR v1 schema
 - `docs/relay_design.md` - Relay 设计说明（本地 GPU 中继）
+- `docs/deployment/cloud-relay-runbook.md` - 云端入口 + 本地 GPU Relay 部署流程
 - `services/orchestrator/README.md` - 后端本地 smoke test
+- `services/relay/README.md` - Relay 本地运行与自检说明
 - `apps/web/README.md` - 前端说明
 - `CONTRIBUTING.md` - 仓库协作约定
 - `docs/process/github-collaboration-guide.zh-CN.md` - 迁移后的中文协作过程文档

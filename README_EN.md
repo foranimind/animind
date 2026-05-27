@@ -31,6 +31,7 @@ Animind is a localized workflow for digital human animation and multimodal gener
 - Orchestrator orchestration: task queue, stage-based state machine, progress and logs, SSE/WS event streams, manifest asset list
 - Multi-model adapters: AnimationGPT (motion), Diffusion360 (scene), MusicGPT (music), built-in character library (character), Three.js preview config, ffmpeg export
 - Localized runtime: native Windows/Linux; run Linux models via WSL when needed
+- Cloud extension: optional Relay keeps heavy model execution on a local GPU machine while a cloud orchestrator owns routing and user traffic
 - Frontend experience: React + Vite + Three.js, supports Mock mode and local preview
 
 <a id="structure"></a>
@@ -38,6 +39,8 @@ Animind is a localized workflow for digital human animation and multimodal gener
 
 - `apps/web` - New web frontend
 - `services/orchestrator` - Backend orchestrator service
+- `services/relay` - Local GPU relay service for cloud-connected deployments
+- `deploy` - Environment examples, systemd units, Nginx config, and deployment scripts
 - `docs` - API/UIR/Relay design docs
 - `tests` - Backend unit tests
 - `runtime` - Runtime outputs (assets/cache/logs)
@@ -164,6 +167,19 @@ export WSL_DISTRO=Ubuntu
 
 Tip: When `ANIMATIONGPT_PYTHON` or `DIFFUSION360_PYTHON` points to a Linux path (such as `/home/...` or `\\wsl$\\...`), the system automatically executes via WSL.
 
+### 7) Relay environment variables (optional, cloud-connected mode)
+
+Only configure these when you want a cloud entrypoint backed by a local GPU relay:
+
+| Variable | Description | Default/Notes |
+| --- | --- | --- |
+| `RELAY_SHARED_TOKEN` | Relay inbound auth token | Required |
+| `RELAY_RUNTIME_DIR` | Relay runtime directory | Default `relay_runtime` |
+| `ORCHESTRATOR_BASE_URL` | Base URL of the cloud orchestrator | Required |
+| `ORCHESTRATOR_RELAY_TOKEN` | Token used for relay uploads back to the orchestrator | Should match the shared token |
+
+See `deploy/env/animind.relay.env.example` for a concrete example.
+
 <a id="start"></a>
 ## Start Services
 
@@ -186,6 +202,12 @@ Frontend:
 ```bash
 cd apps/web
 npm run dev
+```
+
+Relay (optional):
+
+```bash
+python -m uvicorn services.relay.src.main:app --host 0.0.0.0 --port 9000
 ```
 
 Open: `http://localhost:5173`
@@ -256,6 +278,12 @@ curl -X POST "http://localhost:8000/api/jobs" \
   -d "{\"prompt\":\"A warrior dashes forward\",\"options\":{\"targets\":[\"motion\",\"music\"],\"duration_s\":8}}"
 ```
 
+If Relay is enabled, you can also run:
+
+```bash
+python tools/smoke/smoke_relay_task.py --base-url http://127.0.0.1:9000 --token "$RELAY_SHARED_TOKEN"
+```
+
 <a id="tests"></a>
 ## Tests
 
@@ -278,7 +306,9 @@ npm run test
 - `docs/api.md` - API conventions
 - `docs/uir_schema.md` - UIR v1 schema
 - `docs/relay_design.md` - Relay design (local GPU relay)
+- `docs/deployment/cloud-relay-runbook.md` - Cloud entrypoint plus local GPU relay deployment flow
 - `services/orchestrator/README.md` - Backend local smoke test
+- `services/relay/README.md` - Relay local run and smoke-check notes
 - `apps/web/README.md` - Frontend notes
 - `CONTRIBUTING.md` - Repository contribution guide
 - `docs/process/github-collaboration-guide.zh-CN.md` - Archived Chinese collaboration process guide
