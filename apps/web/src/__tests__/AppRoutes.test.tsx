@@ -37,7 +37,7 @@ describe("App routes", () => {
       expect(window.location.pathname).toBe("/");
     }, { timeout: 3000 });
     expect(
-      await screen.findByRole("heading", { name: "Motionverse Studio" }, { timeout: 3000 })
+      await screen.findByRole("heading", { name: "Animind Studio" }, { timeout: 3000 })
     ).toBeInTheDocument();
     const continueLinks = await screen.findAllByRole("link", { name: "继续创作" });
     expect(continueLinks.length).toBeGreaterThan(0);
@@ -137,7 +137,7 @@ describe("App routes", () => {
     }, { timeout: 3000 });
 
     expect(
-      await screen.findByRole("heading", { name: "Motionverse Studio" }, { timeout: 3000 })
+      await screen.findByRole("heading", { name: "Animind Studio" }, { timeout: 3000 })
     ).toBeInTheDocument();
   });
 });

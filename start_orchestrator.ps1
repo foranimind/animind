@@ -52,5 +52,9 @@ if (-not $NoReload) {
   $reloadFlag = @("--reload")
 }
 
+$portFile = Join-Path $RuntimeDir ".orchestrator-port"
+"$Port" | Set-Content -LiteralPath $portFile -Encoding utf8NoBOM
+
 Write-Host "Starting Orchestrator on http://127.0.0.1:$Port"
+Write-Host "Port file written to $portFile"
 & $orchestratorPython -m uvicorn services.orchestrator.src.main:app --port $Port @reloadFlag

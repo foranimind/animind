@@ -19,7 +19,7 @@ export const WELCOME_STAGE_SCENES: WelcomeStageSceneContent[] = [
     id: "hero",
     kind: "hero",
     eyebrow: "欢迎回来",
-    title: "Motionverse Studio",
+    title: "Animind Studio",
     subtitle: "从灵感、任务到生成结果，欢迎页先帮你看懂整个工作流。",
     description:
       "先了解故事结构，再决定是否继续上一次的创作，或者直接进入工作室开启新的项目。",
